@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, Briefcase, Globe, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,15 @@ import { Navbar } from "@/components/Navbar";
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { t } = useLanguage();
+  const navigate = useNavigate();
+
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (searchQuery) {
+      params.set("q", searchQuery);
+    }
+    navigate(`/jobs?${params.toString()}`);
+  };
 
   const featuredJobs = [
     {
@@ -60,9 +70,10 @@ const Index = () => {
               className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && handleSearch()}
             />
           </div>
-          <Button className="bg-primary hover:bg-primary/90">
+          <Button className="bg-primary hover:bg-primary/90" onClick={handleSearch}>
             {t("searchJobs")}
           </Button>
         </div>
@@ -112,7 +123,11 @@ const Index = () => {
           ))}
         </div>
         <div className="text-center mt-8">
-          <Button variant="outline" className="hover:bg-primary hover:text-white">
+          <Button 
+            variant="outline" 
+            className="hover:bg-primary hover:text-white"
+            onClick={() => navigate("/jobs")}
+          >
             {t("viewAllJobs")}
           </Button>
         </div>
