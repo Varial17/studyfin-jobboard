@@ -88,12 +88,16 @@ export const DesktopSidebar = ({
   children,
   ...props
 }: HTMLMotionProps<"div">) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   return (
     <motion.div
       className={cn(
         "h-full px-2 py-6 hidden md:flex md:flex-col bg-white dark:bg-neutral-900/95 w-[60px] hover:w-[180px] group flex-shrink-0 shadow-xl shadow-neutral-200/50 dark:shadow-neutral-950/50 border-r border-neutral-100 dark:border-neutral-800/50 backdrop-blur-sm transition-all duration-300",
         className
       )}
+      onMouseEnter={() => setIsExpanded(true)}
+      onMouseLeave={() => setIsExpanded(false)}
       {...props}
     >
       {children}
@@ -167,7 +171,7 @@ export const SidebarLink = ({
     <Link
       to={link.href}
       className={cn(
-        "flex items-center py-3 px-4 rounded-lg hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 transition-all duration-200",
+        "flex items-center py-3 px-4 rounded-lg hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 transition-all duration-200 group/link relative overflow-hidden",
         isActive && "bg-neutral-100/80 dark:bg-neutral-800/80 active",
         className
       )}
@@ -179,8 +183,8 @@ export const SidebarLink = ({
       <motion.span
         initial={{ opacity: 0, width: 0 }}
         animate={{ 
-          opacity: isActive || isHovered ? 1 : 0,
-          width: isActive || isHovered ? "auto" : 0
+          opacity: isHovered || document.querySelector(".group:hover") ? 1 : 0,
+          width: isHovered || document.querySelector(".group:hover") ? "auto" : 0
         }}
         transition={{ duration: 0.2 }}
         className="text-neutral-600 dark:text-neutral-300 text-sm font-medium ml-3 whitespace-nowrap overflow-hidden"

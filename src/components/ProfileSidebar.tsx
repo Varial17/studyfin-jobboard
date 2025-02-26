@@ -53,7 +53,7 @@ export function ProfileSidebar() {
             <SidebarLink 
               key={link.label} 
               link={link}
-              className="group/link relative overflow-hidden flex items-center"
+              className="group/link"
             />
           ))}
           <button 
@@ -66,8 +66,8 @@ export function ProfileSidebar() {
             <motion.span
               initial={{ opacity: 0, width: 0 }}
               animate={{ 
-                opacity: isLogoutHovered ? 1 : 0,
-                width: isLogoutHovered ? "auto" : 0
+                opacity: isLogoutHovered || document.querySelector(".group:hover") ? 1 : 0,
+                width: isLogoutHovered || document.querySelector(".group:hover") ? "auto" : 0
               }}
               transition={{ duration: 0.2 }}
               className="text-neutral-600 dark:text-neutral-300 text-sm font-medium ml-3 whitespace-nowrap overflow-hidden"
