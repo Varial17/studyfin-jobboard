@@ -119,3 +119,4 @@ export function JobDetails({ job, isOpen, onClose }: JobDetailsProps) {
     </Dialog>
   );
 }
+
