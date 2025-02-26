@@ -30,6 +30,7 @@ const App = () => (
               <Route path="/jobs" element={<Jobs />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/profile/post-job" element={<PostJob />} />
+              <Route path="/profile/applications" element={<JobApplications />} />
               <Route path="/profile/jobs/:jobId/applications" element={<JobApplications />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
