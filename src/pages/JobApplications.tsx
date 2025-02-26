@@ -68,12 +68,9 @@ const JobApplications = () => {
           id,
           status,
           created_at,
-          applicant:applicant_id(
+          applicant:profiles!applications_applicant_id_fkey(
             full_name,
             location
-          ),
-          user:applicant_id(
-            email
           )
         `)
         .eq("job_id", jobId);
@@ -109,10 +106,6 @@ const JobApplications = () => {
     {
       accessorKey: "applicant.full_name",
       header: "Name",
-    },
-    {
-      accessorKey: "user.email",
-      header: "Email",
     },
     {
       accessorKey: "applicant.location",
