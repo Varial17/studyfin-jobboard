@@ -62,7 +62,21 @@ const Profile = () => {
           .single();
 
         if (error) throw error;
-        if (data) setProfile(data);
+        if (data) {
+          setProfile({
+            ...profile,
+            full_name: data.full_name || "",
+            title: data.title || "",
+            bio: data.bio || "",
+            location: data.location || "",
+            phone_number: data.phone_number || "",
+            website: data.website || "",
+            university: data.university || "",
+            field_of_study: data.field_of_study || "",
+            graduation_year: data.graduation_year ? data.graduation_year.toString() : "",
+            student_status: data.student_status || "",
+          });
+        }
       } catch (error: any) {
         toast({
           variant: "destructive",
@@ -84,7 +98,10 @@ const Profile = () => {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update(profile)
+        .update({
+          ...profile,
+          graduation_year: profile.graduation_year ? parseInt(profile.graduation_year) : null,
+        })
         .eq("id", user.id);
 
       if (error) throw error;
@@ -129,7 +146,7 @@ const Profile = () => {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t("fullName")}</label>
                   <Input
-                    value={profile.full_name || ""}
+                    value={profile.full_name}
                     onChange={(e) =>
                       setProfile({ ...profile, full_name: e.target.value })
                     }
@@ -139,7 +156,7 @@ const Profile = () => {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t("title")}</label>
                   <Input
-                    value={profile.title || ""}
+                    value={profile.title}
                     onChange={(e) =>
                       setProfile({ ...profile, title: e.target.value })
                     }
@@ -150,7 +167,7 @@ const Profile = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t("bio")}</label>
                 <Textarea
-                  value={profile.bio || ""}
+                  value={profile.bio}
                   onChange={(e) =>
                     setProfile({ ...profile, bio: e.target.value })
                   }
@@ -178,7 +195,7 @@ const Profile = () => {
                     {t("location")}
                   </label>
                   <Input
-                    value={profile.location || ""}
+                    value={profile.location}
                     onChange={(e) =>
                       setProfile({ ...profile, location: e.target.value })
                     }
@@ -191,7 +208,7 @@ const Profile = () => {
                     {t("phoneNumber")}
                   </label>
                   <Input
-                    value={profile.phone_number || ""}
+                    value={profile.phone_number}
                     onChange={(e) =>
                       setProfile({ ...profile, phone_number: e.target.value })
                     }
@@ -211,7 +228,7 @@ const Profile = () => {
                     {t("website")}
                   </label>
                   <Input
-                    value={profile.website || ""}
+                    value={profile.website}
                     onChange={(e) =>
                       setProfile({ ...profile, website: e.target.value })
                     }
@@ -236,7 +253,7 @@ const Profile = () => {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t("university")}</label>
                   <Input
-                    value={profile.university || ""}
+                    value={profile.university}
                     onChange={(e) =>
                       setProfile({ ...profile, university: e.target.value })
                     }
@@ -248,7 +265,7 @@ const Profile = () => {
                     {t("fieldOfStudy")}
                   </label>
                   <Input
-                    value={profile.field_of_study || ""}
+                    value={profile.field_of_study}
                     onChange={(e) =>
                       setProfile({ ...profile, field_of_study: e.target.value })
                     }
@@ -261,7 +278,7 @@ const Profile = () => {
                   </label>
                   <Input
                     type="number"
-                    value={profile.graduation_year || ""}
+                    value={profile.graduation_year}
                     onChange={(e) =>
                       setProfile({
                         ...profile,
@@ -276,7 +293,7 @@ const Profile = () => {
                     {t("studentStatus")}
                   </label>
                   <Input
-                    value={profile.student_status || ""}
+                    value={profile.student_status}
                     onChange={(e) =>
                       setProfile({ ...profile, student_status: e.target.value })
                     }
@@ -304,3 +321,4 @@ const Profile = () => {
 };
 
 export default Profile;
+
