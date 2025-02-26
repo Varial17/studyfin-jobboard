@@ -88,7 +88,6 @@ export const DesktopSidebar = ({
   children,
   ...props
 }: HTMLMotionProps<"div">) => {
-  const { open, setOpen, animate } = useSidebar();
   return (
     <motion.div
       className={cn(
@@ -161,8 +160,8 @@ export const SidebarLink = ({
   link: Links;
   className?: string;
 }) => {
-  const { open } = useSidebar();
   const isActive = window.location.pathname === link.href;
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
     <Link
@@ -172,15 +171,18 @@ export const SidebarLink = ({
         isActive && "bg-neutral-100/80 dark:bg-neutral-800/80 active",
         className
       )}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       {...props}
     >
       {link.icon}
       <motion.span
         initial={{ opacity: 0, width: 0 }}
         animate={{ 
-          opacity: isActive || document.querySelector(".group:hover") ? 1 : 0,
-          width: isActive || document.querySelector(".group:hover") ? "auto" : 0
+          opacity: isActive || isHovered ? 1 : 0,
+          width: isActive || isHovered ? "auto" : 0
         }}
+        transition={{ duration: 0.2 }}
         className="text-neutral-600 dark:text-neutral-300 text-sm font-medium ml-3 whitespace-nowrap overflow-hidden"
       >
         {link.label}
