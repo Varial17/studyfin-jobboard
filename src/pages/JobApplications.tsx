@@ -39,9 +39,6 @@ type Application = {
     full_name: string | null;
     location: string | null;
   };
-  user: {
-    email: string;
-  };
   status: ApplicationStatus;
   created_at: string;
 };
@@ -244,3 +241,4 @@ const JobApplications = () => {
 };
 
 export default JobApplications;
+
