@@ -13,28 +13,28 @@ export function ProfileSidebar() {
       label: "Profile",
       href: "/profile",
       icon: (
-        <User className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+        <User className="text-neutral-500 dark:text-neutral-400 h-5 w-5 flex-shrink-0 group-hover/sidebar:text-primary transition-colors" />
       ),
     },
     {
       label: "My Jobs",
       href: "/profile/jobs",
       icon: (
-        <Briefcase className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+        <Briefcase className="text-neutral-500 dark:text-neutral-400 h-5 w-5 flex-shrink-0 group-hover/sidebar:text-primary transition-colors" />
       ),
     },
     {
       label: "Post Job",
       href: "/profile/post-job",
       icon: (
-        <Plus className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+        <Plus className="text-neutral-500 dark:text-neutral-400 h-5 w-5 flex-shrink-0 group-hover/sidebar:text-primary transition-colors" />
       ),
     },
     {
       label: "Settings",
       href: "/profile/settings",
       icon: (
-        <Settings className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+        <Settings className="text-neutral-500 dark:text-neutral-400 h-5 w-5 flex-shrink-0 group-hover/sidebar:text-primary transition-colors" />
       ),
     },
   ];
@@ -47,22 +47,24 @@ export function ProfileSidebar() {
     <Sidebar>
       <SidebarBody className="justify-between gap-10">
         <div className="flex flex-col flex-1">
-          <Link to="/" className="font-normal flex space-x-2 items-center text-sm text-black py-1">
-            <div className="h-5 w-6 bg-black dark:bg-white rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
-            <motion.span className="font-medium text-black dark:text-white whitespace-pre">
-              Job Board
+          <Link to="/" className="flex items-center gap-3 px-4 py-2 mb-6">
+            <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
+              <motion.span className="font-bold text-white text-lg">S</motion.span>
+            </div>
+            <motion.span className="font-semibold text-neutral-900 dark:text-white text-lg whitespace-pre">
+              Studyfin
             </motion.span>
           </Link>
-          <div className="mt-8 flex flex-col gap-2">
+          <div className="flex flex-col gap-1">
             {links.map((link) => (
               <SidebarLink key={link.label} link={link} />
             ))}
             <button 
               onClick={handleLogout}
-              className="flex items-center justify-start gap-2 group/sidebar py-2 w-full"
+              className="flex items-center justify-start gap-3 group/sidebar py-3 px-4 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all duration-200 w-full text-left"
             >
-              <LogOut className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-              <span className="text-neutral-700 dark:text-neutral-200 text-sm">
+              <LogOut className="text-neutral-500 dark:text-neutral-400 h-5 w-5 flex-shrink-0 group-hover/sidebar:text-primary transition-colors" />
+              <span className="text-neutral-700 dark:text-neutral-200 text-sm font-medium group-hover/sidebar:text-primary transition-colors">
                 Logout
               </span>
             </button>
