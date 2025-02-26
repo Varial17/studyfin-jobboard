@@ -1,3 +1,4 @@
+
 export const translations = {
   en: {
     search: "Search jobs, companies, or keywords...",
@@ -83,6 +84,11 @@ export const translations = {
     requirements: "Requirements",
     coverLetter: "Cover Letter",
     coverLetterPlaceholder: "Write your cover letter here...",
+    // New translations for job application flow
+    back: "Back",
+    submit: "Submit",
+    applyingFor: "Applying for",
+    visaSponsorship: "Visa Sponsorship",
   },
   zh: {
     search: "搜索工作、公司或关键词...",
@@ -168,5 +174,10 @@ export const translations = {
     requirements: "要求",
     coverLetter: "求职信",
     coverLetterPlaceholder: "在这里写下您的求职信...",
+    // New translations for job application flow
+    back: "返回",
+    submit: "提交",
+    applyingFor: "申请职位",
+    visaSponsorship: "提供签证赞助",
   },
 };
