@@ -111,10 +111,13 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           created_at: string | null
+          cv_url: string | null
           field_of_study: string | null
           full_name: string | null
+          github_url: string | null
           graduation_year: number | null
           id: string
+          linkedin_url: string | null
           location: string | null
           phone_number: string | null
           student_status: string | null
@@ -127,10 +130,13 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string | null
+          cv_url?: string | null
           field_of_study?: string | null
           full_name?: string | null
+          github_url?: string | null
           graduation_year?: number | null
           id: string
+          linkedin_url?: string | null
           location?: string | null
           phone_number?: string | null
           student_status?: string | null
@@ -143,10 +149,13 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string | null
+          cv_url?: string | null
           field_of_study?: string | null
           full_name?: string | null
+          github_url?: string | null
           graduation_year?: number | null
           id?: string
+          linkedin_url?: string | null
           location?: string | null
           phone_number?: string | null
           student_status?: string | null
