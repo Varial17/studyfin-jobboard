@@ -92,14 +92,9 @@ export const DesktopSidebar = ({
   return (
     <motion.div
       className={cn(
-        "h-full px-6 py-6 hidden md:flex md:flex-col bg-white dark:bg-neutral-900/95 w-[300px] flex-shrink-0 shadow-xl shadow-neutral-200/50 dark:shadow-neutral-950/50 border-r border-neutral-100 dark:border-neutral-800/50 backdrop-blur-sm",
+        "h-full px-2 py-6 hidden md:flex md:flex-col bg-white dark:bg-neutral-900/95 w-[80px] flex-shrink-0 shadow-xl shadow-neutral-200/50 dark:shadow-neutral-950/50 border-r border-neutral-100 dark:border-neutral-800/50 backdrop-blur-sm",
         className
       )}
-      animate={{
-        width: animate ? (open ? "300px" : "80px") : "300px",
-      }}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
       {...props}
     >
       {children}
@@ -120,11 +115,7 @@ export const MobileSidebar = ({
   const { open, setOpen } = useSidebar();
   return (
     <>
-      <div
-        className={cn(
-          "h-16 px-4 flex flex-row md:hidden items-center justify-between bg-white dark:bg-neutral-900 w-full border-b border-neutral-100 dark:border-neutral-800/50 backdrop-blur-sm"
-        )}
-      >
+      <div className="h-16 px-4 flex flex-row md:hidden items-center justify-between bg-white dark:bg-neutral-900 w-full border-b border-neutral-100 dark:border-neutral-800/50 backdrop-blur-sm">
         <div className="flex justify-end z-20 w-full">
           <Menu
             className="text-neutral-600 dark:text-neutral-300 cursor-pointer hover:text-primary transition-colors"
@@ -170,32 +161,30 @@ export const SidebarLink = ({
   link: Links;
   className?: string;
 }) => {
-  const { open, animate } = useSidebar();
+  const { open } = useSidebar();
   const isActive = window.location.pathname === link.href;
 
   return (
     <Link
       to={link.href}
       className={cn(
-        "flex items-center justify-start gap-3 py-3 px-4 rounded-lg hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 transition-all duration-200",
+        "flex items-center justify-center py-3 px-4 rounded-lg hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 transition-all duration-200",
         isActive && "bg-neutral-100/80 dark:bg-neutral-800/80 active",
         className
       )}
       {...props}
     >
       {link.icon}
-      <motion.span
-        animate={{
-          display: animate ? (open ? "inline-block" : "none") : "inline-block",
-          opacity: animate ? (open ? 1 : 0) : 1,
-        }}
-        className={cn(
-          "text-neutral-600 dark:text-neutral-300 text-sm font-medium transition-colors whitespace-pre inline-block !p-0 !m-0",
-          isActive && "text-primary dark:text-primary"
-        )}
-      >
-        {link.label}
-      </motion.span>
+      {isActive && (
+        <motion.span
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -10 }}
+          className="text-neutral-600 dark:text-neutral-300 text-sm font-medium ml-3"
+        >
+          {link.label}
+        </motion.span>
+      )}
     </Link>
   );
 };
