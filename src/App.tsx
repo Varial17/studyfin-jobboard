@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import Jobs from "./pages/Jobs";
 import Profile from "./pages/Profile";
 import PostJob from "@/pages/PostJob";
+import JobApplications from "@/pages/JobApplications";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +30,7 @@ const App = () => (
               <Route path="/jobs" element={<Jobs />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/profile/post-job" element={<PostJob />} />
+              <Route path="/profile/jobs/:jobId/applications" element={<JobApplications />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
