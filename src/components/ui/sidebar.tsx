@@ -92,7 +92,7 @@ export const DesktopSidebar = ({
   return (
     <motion.div
       className={cn(
-        "h-full px-2 py-6 hidden md:flex md:flex-col bg-white dark:bg-neutral-900/95 w-[80px] flex-shrink-0 shadow-xl shadow-neutral-200/50 dark:shadow-neutral-950/50 border-r border-neutral-100 dark:border-neutral-800/50 backdrop-blur-sm",
+        "h-full px-2 py-6 hidden md:flex md:flex-col bg-white dark:bg-neutral-900/95 w-[60px] hover:w-[180px] group flex-shrink-0 shadow-xl shadow-neutral-200/50 dark:shadow-neutral-950/50 border-r border-neutral-100 dark:border-neutral-800/50 backdrop-blur-sm transition-all duration-300",
         className
       )}
       {...props}
@@ -168,23 +168,23 @@ export const SidebarLink = ({
     <Link
       to={link.href}
       className={cn(
-        "flex items-center justify-center py-3 px-4 rounded-lg hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 transition-all duration-200",
+        "flex items-center py-3 px-4 rounded-lg hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 transition-all duration-200",
         isActive && "bg-neutral-100/80 dark:bg-neutral-800/80 active",
         className
       )}
       {...props}
     >
       {link.icon}
-      {isActive && (
-        <motion.span
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -10 }}
-          className="text-neutral-600 dark:text-neutral-300 text-sm font-medium ml-3"
-        >
-          {link.label}
-        </motion.span>
-      )}
+      <motion.span
+        initial={{ opacity: 0, width: 0 }}
+        animate={{ 
+          opacity: isActive || document.querySelector(".group:hover") ? 1 : 0,
+          width: isActive || document.querySelector(".group:hover") ? "auto" : 0
+        }}
+        className="text-neutral-600 dark:text-neutral-300 text-sm font-medium ml-3 whitespace-nowrap overflow-hidden"
+      >
+        {link.label}
+      </motion.span>
     </Link>
   );
 };
