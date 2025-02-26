@@ -8,6 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Navbar } from "@/components/Navbar";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { Database } from "@/integrations/supabase/types";
+
+type Job = Database["public"]["Tables"]["jobs"]["Row"];
 
 const Jobs = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -19,20 +24,34 @@ const Jobs = () => {
     type: "",
   });
 
-  const jobs = [
-    {
-      id: 1,
-      title: "Software Engineer Intern",
-      company: "TechCorp International",
-      location: "San Francisco, CA",
-      type: "Internship",
-      visa: "F1 OPT",
-      salary: "$50-55k",
-      description: "Join our dynamic team to build innovative solutions...",
-      postedAt: "2 days ago",
+  const searchQuery = searchParams.get("q") || "";
+  const locationFilter = filters.location;
+
+  const { data: jobs = [], isLoading } = useQuery({
+    queryKey: ["jobs", searchQuery, locationFilter],
+    queryFn: async () => {
+      let query = supabase
+        .from("jobs")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (searchQuery) {
+        query = query.ilike("title", `%${searchQuery}%`);
+      }
+
+      if (locationFilter) {
+        query = query.ilike("location", `%${locationFilter}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw error;
+      }
+
+      return data || [];
     },
-    // ... Add more job listings as needed
-  ];
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -83,42 +102,54 @@ const Jobs = () => {
               <h2 className="font-semibold">Filters</h2>
             </div>
             <Separator className="mb-4" />
-            {/* Filter sections */}
-            {/* Add filter sections for salary range, experience level, job type, etc. */}
+            {/* Add filter sections here */}
           </div>
 
           {/* Job Listings */}
           <div className="lg:col-span-3 space-y-4">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">3177 Jobs</h2>
+              <h2 className="text-lg font-semibold">{jobs.length} Jobs</h2>
               <Button variant="outline">
                 Sort by: Recent
               </Button>
             </div>
-            {jobs.map((job) => (
-              <div
-                key={job.id}
-                className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-100"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="font-semibold text-lg mb-1">{job.title}</h3>
-                    <p className="text-gray-600">{job.company}</p>
+
+            {isLoading ? (
+              <div className="text-center py-8">Loading jobs...</div>
+            ) : jobs.length === 0 ? (
+              <div className="text-center py-8">No jobs found</div>
+            ) : (
+              jobs.map((job) => (
+                <div
+                  key={job.id}
+                  className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-100"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="font-semibold text-lg mb-1">{job.title}</h3>
+                      <p className="text-gray-600">{job.company}</p>
+                    </div>
+                    <span className="text-sm text-gray-500">
+                      {new Date(job.created_at!).toLocaleDateString()}
+                    </span>
                   </div>
-                  <span className="text-sm text-gray-500">{job.postedAt}</span>
+                  <div className="flex items-center text-gray-500 mb-4">
+                    <MapPin className="w-4 h-4 mr-1" />
+                    <span className="text-sm">{job.location}</span>
+                  </div>
+                  <p className="text-gray-600 mb-4">{job.description}</p>
+                  <div className="flex gap-2 flex-wrap">
+                    <Badge variant="secondary">{job.job_type}</Badge>
+                    {job.salary_range && (
+                      <Badge variant="secondary">{job.salary_range}</Badge>
+                    )}
+                    {job.visa_sponsorship && (
+                      <Badge className="bg-primary">Visa Sponsorship</Badge>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center text-gray-500 mb-4">
-                  <MapPin className="w-4 h-4 mr-1" />
-                  <span className="text-sm">{job.location}</span>
-                </div>
-                <p className="text-gray-600 mb-4">{job.description}</p>
-                <div className="flex gap-2 flex-wrap">
-                  <Badge variant="secondary">{job.type}</Badge>
-                  <Badge variant="secondary">{job.salary}</Badge>
-                  <Badge className="bg-primary">{job.visa}</Badge>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
