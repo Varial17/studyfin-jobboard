@@ -1,4 +1,3 @@
-
 export const translations = {
   en: {
     search: "Search jobs, companies, or keywords...",
@@ -59,8 +58,21 @@ export const translations = {
     success: "Success",
     profileUpdated: "Profile updated successfully",
     cv: "CV / Resume",
-    viewCV: "View Current CV",
+    viewCV: "View CV",
     cvUploaded: "CV uploaded successfully",
+    // Job Applications translations
+    jobApplications: "Job Applications",
+    noApplications: "No applications found",
+    applicationStatusUpdated: "Application status updated successfully",
+    applicantName: "Applicant Name",
+    jobTitle: "Job Title",
+    company: "Company",
+    appliedDate: "Applied Date",
+    resume: "Resume",
+    status: "Status",
+    unnamed: "Unnamed",
+    noTitle: "No Title",
+    noCVUploaded: "No CV Uploaded",
   },
   zh: {
     search: "搜索工作、公司或关键词...",
@@ -123,5 +135,18 @@ export const translations = {
     cv: "简历",
     viewCV: "查看当前简历",
     cvUploaded: "简历上传成功",
+    // Job Applications translations
+    jobApplications: "职位申请",
+    noApplications: "未找到申请",
+    applicationStatusUpdated: "申请状态已更新",
+    applicantName: "申请人姓名",
+    jobTitle: "职位名称",
+    company: "公司",
+    appliedDate: "申请日期",
+    resume: "简历",
+    status: "状态",
+    unnamed: "未命名",
+    noTitle: "无职位",
+    noCVUploaded: "未上传简历",
   },
 };
