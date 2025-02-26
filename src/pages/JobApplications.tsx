@@ -1,22 +1,11 @@
 
-import { useState } from "react";
-import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import {
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-  getPaginationRowModel,
-  getSortedRowModel,
-  type SortingState,
-} from "@tanstack/react-table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { supabase } from "@/integrations/supabase/client";
+import { ProfileSidebar } from "@/components/ProfileSidebar";
+import { useToast } from "@/components/ui/use-toast";
 import {
   Table,
   TableBody,
@@ -25,59 +14,89 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
-import { Badge } from "@/components/ui/badge";
-import { ProfileSidebar } from "@/components/ProfileSidebar";
-import { supabase } from "@/integrations/supabase/client";
-
-type ApplicationStatus = "new_cv" | "interviewed" | "job_offer" | "rejected" | "hired";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Application = {
   id: string;
-  applicant: {
-    full_name: string | null;
-    location: string | null;
-  };
-  status: ApplicationStatus;
+  status: string;
   created_at: string;
-};
-
-const statusColors: Record<ApplicationStatus, { color: string; label: string }> = {
-  new_cv: { color: "bg-blue-500", label: "New CV" },
-  interviewed: { color: "bg-purple-500", label: "Interviewed" },
-  job_offer: { color: "bg-yellow-500", label: "Job Offer" },
-  rejected: { color: "bg-red-500", label: "Rejected" },
-  hired: { color: "bg-green-500", label: "Hired" },
+  job: {
+    title: string;
+    company: string;
+  };
+  applicant: {
+    full_name: string;
+    title: string;
+    cv_url: string | null;
+  };
+  cover_letter: string | null;
 };
 
 const JobApplications = () => {
-  const { jobId } = useParams<{ jobId: string }>();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { t } = useLanguage();
   const { toast } = useToast();
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const { data: applications, isLoading } = useQuery({
-    queryKey: ["applications", jobId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("applications")
-        .select(`
-          id,
-          status,
-          created_at,
-          applicant:profiles (
-            full_name,
-            location
-          )
-        `)
-        .eq("job_id", jobId);
+  useEffect(() => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
 
-      if (error) throw error;
-      return data as Application[];
-    },
-  });
+    const fetchApplications = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("applications")
+          .select(`
+            id,
+            status,
+            created_at,
+            cover_letter,
+            jobs (
+              title,
+              company
+            ),
+            profiles!applications_applicant_id_fkey (
+              full_name,
+              title,
+              cv_url
+            )
+          `)
+          .order("created_at", { ascending: false });
 
-  const handleStatusChange = async (applicationId: string, newStatus: ApplicationStatus) => {
+        if (error) throw error;
+
+        setApplications(
+          data.map((app) => ({
+            ...app,
+            job: app.jobs,
+            applicant: app.profiles,
+          }))
+        );
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: t("error"),
+          description: error.message,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchApplications();
+  }, [user, navigate, t, toast]);
+
+  const updateApplicationStatus = async (applicationId: string, newStatus: string) => {
     try {
       const { error } = await supabase
         .from("applications")
@@ -86,154 +105,114 @@ const JobApplications = () => {
 
       if (error) throw error;
 
+      setApplications(applications.map(app => 
+        app.id === applicationId ? { ...app, status: newStatus } : app
+      ));
+
       toast({
-        title: "Status updated",
-        description: "Application status has been successfully updated.",
+        title: t("success"),
+        description: t("applicationStatusUpdated"),
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to update application status.",
+        title: t("error"),
+        description: error.message,
       });
     }
   };
 
-  const columns = [
-    {
-      accessorKey: "applicant.full_name",
-      header: "Name",
-    },
-    {
-      accessorKey: "applicant.location",
-      header: "Location",
-    },
-    {
-      accessorKey: "created_at",
-      header: "Applied",
-      cell: ({ row }) => {
-        const date = new Date(row.getValue("created_at"));
-        return date.toLocaleDateString();
-      },
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => {
-        const status = row.getValue("status") as ApplicationStatus;
-        const { color, label } = statusColors[status];
-        
-        return (
-          <Select
-            value={status}
-            onValueChange={(value: ApplicationStatus) => 
-              handleStatusChange(row.original.id, value)
-            }
-          >
-            <SelectTrigger className="w-32">
-              <SelectValue>
-                <Badge className={color}>{label}</Badge>
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(statusColors).map(([value, { label, color }]) => (
-                <SelectItem key={value} value={value}>
-                  <Badge className={color}>{label}</Badge>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-      },
-    },
-  ];
-
-  const table = useReactTable({
-    data: applications || [],
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    onSortingChange: setSorting,
-    state: {
-      sorting,
-    },
-  });
-
-  if (isLoading) {
-    return <div>Loading...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <span className="text-lg">{t("loading")}</span>
+      </div>
+    );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 dark:bg-neutral-900">
       <ProfileSidebar />
-      <main className="flex-1 p-8">
+      <main className="flex-1 px-4 py-8 md:px-8">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-2xl font-bold mb-8">Job Applications</h1>
+          <h1 className="text-2xl font-semibold mb-6">{t("jobApplications")}</h1>
           
-          <div className="bg-white rounded-lg shadow">
-            <div className="overflow-x-auto">
+          {applications.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">{t("noApplications")}</p>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-neutral-800 rounded-lg shadow">
               <Table>
                 <TableHeader>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id}>
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  ))}
+                  <TableRow>
+                    <TableHead>{t("applicantName")}</TableHead>
+                    <TableHead>{t("jobTitle")}</TableHead>
+                    <TableHead>{t("company")}</TableHead>
+                    <TableHead>{t("appliedDate")}</TableHead>
+                    <TableHead>{t("resume")}</TableHead>
+                    <TableHead>{t("status")}</TableHead>
+                  </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {table.getRowModel().rows.length > 0 ? (
-                    table.getRowModel().rows.map((row) => (
-                      <TableRow key={row.id}>
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={columns.length}
-                        className="h-24 text-center"
-                      >
-                        No applications found
+                  {applications.map((application) => (
+                    <TableRow key={application.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">
+                            {application.applicant?.full_name || t("unnamed")}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {application.applicant?.title || t("noTitle")}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{application.job.title}</TableCell>
+                      <TableCell>{application.job.company}</TableCell>
+                      <TableCell>
+                        {new Date(application.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {application.applicant?.cv_url ? (
+                          <a
+                            href={application.applicant.cv_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {t("viewCV")}
+                          </a>
+                        ) : (
+                          <span className="text-gray-500">{t("noCVUploaded")}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          defaultValue={application.status}
+                          onValueChange={(value) =>
+                            updateApplicationStatus(application.id, value)
+                          }
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="new_cv">New CV</SelectItem>
+                            <SelectItem value="reviewing">Reviewing</SelectItem>
+                            <SelectItem value="shortlisted">Shortlisted</SelectItem>
+                            <SelectItem value="interview">Interview</SelectItem>
+                            <SelectItem value="offer">Offer</SelectItem>
+                            <SelectItem value="hired">Hired</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                     </TableRow>
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </div>
-            <div className="flex items-center justify-end p-4 space-x-2 border-t">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+          )}
         </div>
       </main>
     </div>
@@ -241,3 +220,4 @@ const JobApplications = () => {
 };
 
 export default JobApplications;
+
