@@ -1,9 +1,20 @@
 
 import { Button } from "./ui/button";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { User, LogOut } from "lucide-react";
 
 export const Navbar = () => {
   const { language, setLanguage, t } = useLanguage();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/");
+  };
 
   return (
     <nav className="bg-white shadow-sm">
@@ -17,6 +28,31 @@ export const Navbar = () => {
           >
             {t("language")}: {language.toUpperCase()}
           </Button>
+          {user ? (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => navigate("/profile")}
+                className="flex items-center gap-2"
+              >
+                <User className="w-4 h-4" />
+                {t("profile")}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={handleLogout}
+                className="flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                {t("logout")}
+              </Button>
+            </div>
+          ) : (
+            <Button onClick={() => navigate("/auth")} className="flex items-center gap-2">
+              <User className="w-4 h-4" />
+              {t("login")}
+            </Button>
+          )}
         </div>
       </div>
     </nav>
