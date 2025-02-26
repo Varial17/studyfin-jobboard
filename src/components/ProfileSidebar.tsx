@@ -1,6 +1,6 @@
 
 import { useAuth } from "@/contexts/AuthContext";
-import { User, Briefcase, Plus, Settings, LogOut } from "lucide-react";
+import { User, Briefcase, Plus, Settings, LogOut, ClipboardList } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -23,6 +23,13 @@ export function ProfileSidebar() {
       href: "/profile/jobs",
       icon: (
         <Briefcase className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
+      ),
+    },
+    {
+      label: "Applications",
+      href: "/profile/applications",
+      icon: (
+        <ClipboardList className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
       ),
     },
     {
