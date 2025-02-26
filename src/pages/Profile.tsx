@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,6 +24,9 @@ import {
   Mail,
   Link as LinkIcon,
   Save,
+  FileText,
+  Github,
+  Linkedin,
 } from "lucide-react";
 
 const Profile = () => {
@@ -34,6 +36,7 @@ const Profile = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [profile, setProfile] = useState({
     full_name: "",
     title: "",
@@ -45,6 +48,9 @@ const Profile = () => {
     field_of_study: "",
     graduation_year: "",
     student_status: "",
+    cv_url: "",
+    github_url: "",
+    linkedin_url: "",
   });
 
   useEffect(() => {
@@ -75,6 +81,9 @@ const Profile = () => {
             field_of_study: data.field_of_study || "",
             graduation_year: data.graduation_year ? data.graduation_year.toString() : "",
             student_status: data.student_status || "",
+            cv_url: data.cv_url || "",
+            github_url: data.github_url || "",
+            linkedin_url: data.linkedin_url || "",
           });
         }
       } catch (error: any) {
@@ -90,6 +99,51 @@ const Profile = () => {
 
     getProfile();
   }, [user, navigate, toast, t]);
+
+  const handleCVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setUploading(true);
+      const file = e.target.files?.[0];
+      if (!file || !user) return;
+
+      // Upload file to Storage
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
+
+      const { error: uploadError, data } = await supabase.storage
+        .from('cvs')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('cvs')
+        .getPublicUrl(filePath);
+
+      // Update profile with CV URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ cv_url: publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      setProfile({ ...profile, cv_url: publicUrl });
+      toast({
+        title: t("success"),
+        description: t("cvUploaded"),
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: error.message,
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -304,6 +358,69 @@ const Profile = () => {
             </CardContent>
           </Card>
 
+          {/* Professional Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="w-5 h-5" />
+                {t("professionalInfo")}
+              </CardTitle>
+              <CardDescription>{t("professionalInfoDesc")}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    {t("cv")}
+                  </label>
+                  <Input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={handleCVUpload}
+                    disabled={uploading}
+                  />
+                  {profile.cv_url && (
+                    <a
+                      href={profile.cv_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:underline"
+                    >
+                      {t("viewCV")}
+                    </a>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <Github className="w-4 h-4" />
+                    GitHub
+                  </label>
+                  <Input
+                    value={profile.github_url}
+                    onChange={(e) =>
+                      setProfile({ ...profile, github_url: e.target.value })
+                    }
+                    placeholder="https://github.com/username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <Linkedin className="w-4 h-4" />
+                    LinkedIn
+                  </label>
+                  <Input
+                    value={profile.linkedin_url}
+                    onChange={(e) =>
+                      setProfile({ ...profile, linkedin_url: e.target.value })
+                    }
+                    placeholder="https://linkedin.com/in/username"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="flex justify-end">
             <Button
               onClick={handleSave}
@@ -321,4 +438,3 @@ const Profile = () => {
 };
 
 export default Profile;
-
