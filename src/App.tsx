@@ -10,6 +10,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Jobs from "./pages/Jobs";
+import JobDetail from "./pages/JobDetail";
+import JobApplication from "./pages/JobApplication";
 import Profile from "./pages/Profile";
 import PostJob from "@/pages/PostJob";
 import JobApplications from "@/pages/JobApplications";
@@ -28,6 +30,8 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/jobs" element={<Jobs />} />
+              <Route path="/jobs/:jobId" element={<JobDetail />} />
+              <Route path="/jobs/:jobId/apply" element={<JobApplication />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/profile/post-job" element={<PostJob />} />
               <Route path="/profile/applications" element={<JobApplications />} />

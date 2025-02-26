@@ -1,0 +1,154 @@
+
+import { useState } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Navbar } from "@/components/Navbar";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import type { Database } from "@/integrations/supabase/types";
+
+type Job = Database["public"]["Tables"]["jobs"]["Row"];
+
+const JobApplication = () => {
+  const { jobId } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { t } = useLanguage();
+  const [coverLetter, setCoverLetter] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: job, isLoading } = useQuery({
+    queryKey: ["job", jobId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("jobs")
+        .select("*")
+        .eq("id", jobId)
+        .single();
+
+      if (error) throw error;
+      return data as Job;
+    },
+  });
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <p className="mb-4">{t("loginToApply")}</p>
+            <Button asChild>
+              <Link to="/auth">{t("login")}</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading || !job) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  const handleSubmit = async () => {
+    if (!coverLetter.trim()) {
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: t("coverLetterRequired"),
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .insert({
+          job_id: job.id,
+          applicant_id: user.id,
+          cover_letter: coverLetter,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: t("success"),
+        description: t("applicationSubmitted"),
+      });
+      navigate(`/jobs/${jobId}`);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: error.message,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <div className="container mx-auto px-4 py-8">
+        <Card className="max-w-4xl mx-auto">
+          <CardHeader>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h1 className="text-2xl font-bold">
+                  {t("applyingFor")} {job.title}
+                </h1>
+                <Button variant="outline" asChild>
+                  <Link to={`/jobs/${jobId}`}>{t("back")}</Link>
+                </Button>
+              </div>
+              <p className="text-lg text-muted-foreground">{job.company}</p>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <h2 className="font-semibold">{t("coverLetter")}</h2>
+              <Textarea
+                placeholder={t("coverLetterPlaceholder")}
+                value={coverLetter}
+                onChange={(e) => setCoverLetter(e.target.value)}
+                className="min-h-[300px]"
+              />
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              asChild
+            >
+              <Link to={`/jobs/${jobId}`}>{t("cancel")}</Link>
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? t("submitting") : t("submit")}
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default JobApplication;
