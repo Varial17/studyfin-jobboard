@@ -72,11 +72,15 @@ export const Sidebar = ({
   );
 };
 
-export const SidebarBody = (props: HTMLMotionProps<"div">) => {
+interface SidebarBodyProps extends HTMLMotionProps<"div"> {
+  children?: React.ReactNode;
+}
+
+export const SidebarBody = ({ children, ...props }: SidebarBodyProps) => {
   return (
     <>
-      <DesktopSidebar {...props} />
-      <MobileSidebar {...props} />
+      <DesktopSidebar {...props}>{children}</DesktopSidebar>
+      <MobileSidebar {...props}>{children}</MobileSidebar>
     </>
   );
 };
@@ -143,6 +147,7 @@ export const MobileSidebar = ({
                 "fixed h-full w-full inset-0 bg-white dark:bg-neutral-900 p-10 z-[100] flex flex-col justify-between",
                 className
               )}
+              {...props}
             >
               <div
                 className="absolute right-10 top-10 z-50 text-neutral-800 dark:text-neutral-200 cursor-pointer"
