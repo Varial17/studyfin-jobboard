@@ -1,5 +1,5 @@
 
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ const JobDetail = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const { data: job, isLoading } = useQuery({
     queryKey: ["job", jobId],
@@ -65,8 +66,8 @@ const JobDetail = () => {
       });
       return;
     }
-    // Navigate to application page
-    window.open(`/jobs/${jobId}/apply`, "_blank");
+    // Use regular navigation instead of opening in new tab
+    navigate(`/jobs/${jobId}/apply`);
   };
 
   return (

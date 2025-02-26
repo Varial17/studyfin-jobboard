@@ -23,7 +23,8 @@ const JobApplication = () => {
   const [coverLetter, setCoverLetter] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: job, isLoading } = useQuery({
+  // Fetch job details
+  const { data: job, isLoading: isJobLoading } = useQuery({
     queryKey: ["job", jobId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -35,6 +36,25 @@ const JobApplication = () => {
       if (error) throw error;
       return data as Job;
     },
+  });
+
+  // Check if user has already applied
+  const { data: existingApplication, isLoading: isCheckingApplication } = useQuery({
+    queryKey: ["application", jobId, user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      
+      const { data, error } = await supabase
+        .from("applications")
+        .select("*")
+        .eq("job_id", jobId)
+        .eq("applicant_id", user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user && !!jobId,
   });
 
   if (!user) {
@@ -53,12 +73,41 @@ const JobApplication = () => {
     );
   }
 
-  if (isLoading || !job) {
+  if (isJobLoading || isCheckingApplication) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!job) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">Job not found</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (existingApplication) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <Card className="max-w-4xl mx-auto">
+            <CardContent className="pt-6 text-center">
+              <p className="mb-4">You have already applied for this position.</p>
+              <Button asChild>
+                <Link to={`/jobs/${jobId}`}>{t("back")}</Link>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
