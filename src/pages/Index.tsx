@@ -4,9 +4,12 @@ import { Search, Briefcase, Globe, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Navbar } from "@/components/Navbar";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const { t } = useLanguage();
 
   const featuredJobs = [
     {
@@ -37,13 +40,14 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+      <Navbar />
       {/* Hero Section */}
       <section className="container px-4 pt-20 pb-16 text-center">
         <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary animate-fade-in">
-          Find Your Dream Job as an International Student
+          {t("findDreamJob")}
         </h1>
         <p className="text-gray-600 mb-8 max-w-2xl mx-auto animate-fade-in">
-          Discover opportunities that support international students and provide visa sponsorship
+          {t("opportunities")}
         </p>
 
         {/* Search Bar */}
@@ -52,23 +56,23 @@ const Index = () => {
             <Search className="w-5 h-5 text-gray-400" />
             <Input
               type="text"
-              placeholder="Search jobs, companies, or keywords..."
+              placeholder={t("search")}
               className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <Button className="bg-primary hover:bg-primary/90">
-            Search Jobs
+            {t("searchJobs")}
           </Button>
         </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 max-w-4xl mx-auto">
           {[
-            { icon: Briefcase, text: "1000+ Jobs Posted" },
-            { icon: Globe, text: "500+ Companies" },
-            { icon: MapPin, text: "50+ Locations" },
+            { icon: Briefcase, text: "1000+ " + t("jobsPosted") },
+            { icon: Globe, text: "500+ " + t("companies") },
+            { icon: MapPin, text: "50+ " + t("locations") },
           ].map((stat, index) => (
             <div
               key={index}
@@ -83,7 +87,7 @@ const Index = () => {
 
       {/* Featured Jobs Section */}
       <section className="container px-4 py-16">
-        <h2 className="text-3xl font-bold mb-8 text-center">Featured Jobs</h2>
+        <h2 className="text-3xl font-bold mb-8 text-center">{t("featuredJobs")}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {featuredJobs.map((job) => (
             <div
@@ -109,7 +113,7 @@ const Index = () => {
         </div>
         <div className="text-center mt-8">
           <Button variant="outline" className="hover:bg-primary hover:text-white">
-            View All Jobs
+            {t("viewAllJobs")}
           </Button>
         </div>
       </section>
