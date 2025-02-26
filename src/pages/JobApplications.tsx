@@ -65,7 +65,7 @@ const JobApplications = () => {
           id,
           status,
           created_at,
-          applicant:profiles!applications_applicant_id_fkey(
+          applicant:profiles (
             full_name,
             location
           )
@@ -241,4 +241,3 @@ const JobApplications = () => {
 };
 
 export default JobApplications;
-
