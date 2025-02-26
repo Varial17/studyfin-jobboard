@@ -9,6 +9,44 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      applications: {
+        Row: {
+          applicant_id: string
+          cover_letter: string | null
+          created_at: string | null
+          id: string
+          job_id: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          applicant_id: string
+          cover_letter?: string | null
+          created_at?: string | null
+          id?: string
+          job_id: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          applicant_id?: string
+          cover_letter?: string | null
+          created_at?: string | null
+          id?: string
+          job_id?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       education: {
         Row: {
           created_at: string | null
@@ -105,6 +143,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      jobs: {
+        Row: {
+          company: string
+          created_at: string | null
+          description: string
+          employer_id: string
+          id: string
+          job_type: string
+          location: string
+          requirements: string | null
+          salary_range: string | null
+          status: string | null
+          title: string
+          updated_at: string | null
+          visa_sponsorship: boolean | null
+        }
+        Insert: {
+          company: string
+          created_at?: string | null
+          description: string
+          employer_id: string
+          id?: string
+          job_type: string
+          location: string
+          requirements?: string | null
+          salary_range?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          visa_sponsorship?: boolean | null
+        }
+        Update: {
+          company?: string
+          created_at?: string | null
+          description?: string
+          employer_id?: string
+          id?: string
+          job_type?: string
+          location?: string
+          requirements?: string | null
+          salary_range?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          visa_sponsorship?: boolean | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
