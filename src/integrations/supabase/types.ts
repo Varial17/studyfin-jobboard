@@ -9,41 +9,182 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      education: {
+        Row: {
+          created_at: string | null
+          degree: string
+          end_date: string | null
+          field_of_study: string
+          id: string
+          institution: string
+          is_current: boolean | null
+          profile_id: string | null
+          start_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          degree: string
+          end_date?: string | null
+          field_of_study: string
+          id?: string
+          institution: string
+          is_current?: boolean | null
+          profile_id?: string | null
+          start_date: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          degree?: string
+          end_date?: string | null
+          field_of_study?: string
+          id?: string
+          institution?: string
+          is_current?: boolean | null
+          profile_id?: string | null
+          start_date?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "education_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      experiences: {
+        Row: {
+          company: string
+          created_at: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          is_current: boolean | null
+          location: string | null
+          profile_id: string | null
+          start_date: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          company: string
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_current?: boolean | null
+          location?: string | null
+          profile_id?: string | null
+          start_date: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          company?: string
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_current?: boolean | null
+          location?: string | null
+          profile_id?: string | null
+          start_date?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experiences_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          bio: string | null
           created_at: string | null
           field_of_study: string | null
           full_name: string | null
           graduation_year: number | null
           id: string
+          location: string | null
+          phone_number: string | null
           student_status: string | null
+          title: string | null
           university: string | null
           updated_at: string | null
+          website: string | null
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string | null
           field_of_study?: string | null
           full_name?: string | null
           graduation_year?: number | null
           id: string
+          location?: string | null
+          phone_number?: string | null
           student_status?: string | null
+          title?: string | null
           university?: string | null
           updated_at?: string | null
+          website?: string | null
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string | null
           field_of_study?: string | null
           full_name?: string | null
           graduation_year?: number | null
           id?: string
+          location?: string | null
+          phone_number?: string | null
           student_status?: string | null
+          title?: string | null
           university?: string | null
           updated_at?: string | null
+          website?: string | null
         }
         Relationships: []
+      }
+      skills: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          profile_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          profile_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skills_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
