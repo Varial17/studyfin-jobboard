@@ -11,6 +11,7 @@ import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
+import { JobDetails } from "@/components/JobDetails";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 
@@ -23,6 +24,7 @@ const Jobs = () => {
     experience: "",
     type: "",
   });
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
   const searchQuery = searchParams.get("q") || "";
   const locationFilter = filters.location;
@@ -122,7 +124,8 @@ const Jobs = () => {
               jobs.map((job) => (
                 <div
                   key={job.id}
-                  className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-100"
+                  className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-100 cursor-pointer"
+                  onClick={() => setSelectedJob(job)}
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div>
@@ -137,7 +140,7 @@ const Jobs = () => {
                     <MapPin className="w-4 h-4 mr-1" />
                     <span className="text-sm">{job.location}</span>
                   </div>
-                  <p className="text-gray-600 mb-4">{job.description}</p>
+                  <p className="text-gray-600 mb-4 line-clamp-2">{job.description}</p>
                   <div className="flex gap-2 flex-wrap">
                     <Badge variant="secondary">{job.job_type}</Badge>
                     {job.salary_range && (
@@ -153,6 +156,12 @@ const Jobs = () => {
           </div>
         </div>
       </div>
+
+      <JobDetails
+        job={selectedJob}
+        isOpen={!!selectedJob}
+        onClose={() => setSelectedJob(null)}
+      />
     </div>
   );
 };
