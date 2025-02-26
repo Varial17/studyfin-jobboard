@@ -2,7 +2,7 @@
 import { Button } from "./ui/button";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, LogOut } from "lucide-react";
 
@@ -19,7 +19,13 @@ export const Navbar = () => {
   return (
     <nav className="bg-white shadow-sm">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-        <div className="text-2xl font-bold text-primary">StudyFin</div>
+        <Link to="/">
+          <img 
+            src="/lovable-uploads/b6036afc-422e-4dc6-bdc2-936db28c6bc2.png" 
+            alt="StudyFin Logo" 
+            className="h-8"
+          />
+        </Link>
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
