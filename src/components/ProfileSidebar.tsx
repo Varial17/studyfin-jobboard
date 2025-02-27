@@ -60,6 +60,7 @@ export function ProfileSidebar() {
               key={link.label} 
               link={link}
               className="group/link"
+              expanded={isExpanded}
             />
           ))}
           <button 
@@ -67,7 +68,7 @@ export function ProfileSidebar() {
             className="flex items-center group/link py-3 px-4 rounded-lg hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 transition-all duration-200 w-full"
           >
             <LogOut className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
-            <span className="text-neutral-600 dark:text-neutral-300 text-sm font-medium ml-3">
+            <span className={`text-neutral-600 dark:text-neutral-300 text-sm font-medium ml-3 transition-all duration-300 ${isExpanded ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'}`}>
               Logout
             </span>
           </button>

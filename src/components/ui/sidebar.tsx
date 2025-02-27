@@ -1,3 +1,4 @@
+
 "use client";
 
 import { cn } from "@/lib/utils";
@@ -87,15 +88,24 @@ export const DesktopSidebar = ({
   children,
   ...props
 }: HTMLMotionProps<"div">) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   return (
     <motion.div
       className={cn(
-        "h-full px-2 py-6 hidden md:flex md:flex-col bg-white dark:bg-neutral-900/95 w-[180px] flex-shrink-0 shadow-xl shadow-neutral-200/50 dark:shadow-neutral-950/50 border-r border-neutral-100 dark:border-neutral-800/50 backdrop-blur-sm transition-all duration-300",
+        "h-full px-2 py-6 hidden md:flex md:flex-col bg-white dark:bg-neutral-900/95 w-[60px] hover:w-[180px] group flex-shrink-0 shadow-xl shadow-neutral-200/50 dark:shadow-neutral-950/50 border-r border-neutral-100 dark:border-neutral-800/50 backdrop-blur-sm transition-all duration-300",
         className
       )}
+      onMouseEnter={() => setIsExpanded(true)}
+      onMouseLeave={() => setIsExpanded(false)}
       {...props}
     >
-      {children}
+      {React.Children.map(children, child => {
+        if (React.isValidElement(child)) {
+          return React.cloneElement(child as React.ReactElement<any>, { expanded: isExpanded });
+        }
+        return child;
+      })}
     </motion.div>
   );
 };
@@ -154,10 +164,12 @@ export const MobileSidebar = ({
 export const SidebarLink = ({
   link,
   className,
+  expanded,
   ...props
 }: {
   link: Links;
   className?: string;
+  expanded?: boolean;
 }) => {
   const isActive = window.location.pathname === link.href;
 
@@ -172,7 +184,7 @@ export const SidebarLink = ({
       {...props}
     >
       {link.icon}
-      <span className="text-neutral-600 dark:text-neutral-300 text-sm font-medium ml-3">
+      <span className={`text-neutral-600 dark:text-neutral-300 text-sm font-medium ml-3 transition-all duration-300 ${expanded ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'}`}>
         {link.label}
       </span>
     </Link>
