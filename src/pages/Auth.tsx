@@ -26,13 +26,21 @@ const Auth = () => {
     const error = params.get('error');
     const errorDescription = params.get('error_description');
 
+    // Check the URL parameters as soon as the component mounts
+    const token = new URLSearchParams(location.search).get('token');
+    const type = new URLSearchParams(location.search).get('type');
+
     if (isResetMode) {
       if (error) {
-        // Handle error cases
+        let errorMsg = errorDescription;
+        if (error === "access_denied" || errorDescription?.includes("invalid")) {
+          errorMsg = "The password reset link is invalid or has expired. Please request a new one.";
+        }
+        
         toast({
           variant: "destructive",
           title: t("error"),
-          description: errorDescription || "Password reset link is invalid or has expired. Please request a new one.",
+          description: errorMsg,
           duration: 6000,
         });
         setIsLogin(true);
@@ -43,6 +51,40 @@ const Auth = () => {
         setIsForgotPassword(false);
         setIsLogin(false);
       }
+    }
+
+    // Handle direct token verification
+    if (token && type === 'recovery') {
+      const verifyToken = async () => {
+        try {
+          // The token from the URL needs to be verified first
+          const { error } = await supabase.auth.verifyOtp({
+            token,
+            type: 'recovery'
+          });
+
+          if (error) {
+            throw error;
+          }
+
+          setIsResettingPassword(true);
+          setIsForgotPassword(false);
+          setIsLogin(false);
+        } catch (error: any) {
+          console.error("Token verification error:", error);
+          toast({
+            variant: "destructive",
+            title: t("error"),
+            description: "The password reset link is invalid or has expired. Please request a new one.",
+            duration: 6000,
+          });
+          setIsLogin(true);
+          setIsForgotPassword(false);
+          setIsResettingPassword(false);
+        }
+      };
+
+      verifyToken();
     }
   }, [location, toast, t]);
 
