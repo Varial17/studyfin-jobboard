@@ -26,8 +26,12 @@ const Auth = () => {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/auth?type=reset`,
         });
-
-        if (error) throw error;
+        
+        console.log("Password reset attempt for:", email);
+        if (error) {
+          console.error("Password reset error:", error);
+          throw error;
+        }
 
         toast({
           title: t("checkEmail"),
@@ -70,10 +74,11 @@ const Auth = () => {
         });
       }
     } catch (error: any) {
+      console.error("Auth error:", error);
       toast({
         variant: "destructive",
         title: t("error"),
-        description: error.message,
+        description: error.message || "An unexpected error occurred",
       });
     } finally {
       setLoading(false);
