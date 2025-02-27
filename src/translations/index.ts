@@ -70,6 +70,7 @@ export const translations = {
     company: "Company",
     appliedDate: "Applied Date",
     resume: "Resume",
+    contact: "Contact",  // Added this new translation
     status: "Status",
     unnamed: "Unnamed",
     noTitle: "No Title",
@@ -160,6 +161,7 @@ export const translations = {
     company: "公司",
     appliedDate: "申请日期",
     resume: "简历",
+    contact: "联系方式",  // Added this new translation
     status: "状态",
     unnamed: "未命名",
     noTitle: "无职位",
