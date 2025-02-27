@@ -2,7 +2,7 @@
 export const translations = {
   en: {
     search: "Search jobs, companies, or keywords...",
-    findDreamJob: "Find Your Dream Job as an International Student",
+    findDreamJob: "Kickstart your journey to success!",
     opportunities: "Discover opportunities that support international students and provide visa sponsorship",
     searchJobs: "Search Jobs",
     jobsPosted: "Jobs Posted",
@@ -92,7 +92,7 @@ export const translations = {
   },
   zh: {
     search: "搜索工作、公司或关键词...",
-    findDreamJob: "作为国际学生寻找理想的工作",
+    findDreamJob: "开启你的成功之路！",
     opportunities: "发现支持国际学生并提供签证赞助的机会",
     searchJobs: "搜索工作",
     jobsPosted: "已发布工作",
@@ -181,3 +181,4 @@ export const translations = {
     visaSponsorship: "提供签证赞助",
   },
 };
+

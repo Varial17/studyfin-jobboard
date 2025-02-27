@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, MapPin, Building2, Users } from "lucide-react";
@@ -63,7 +64,7 @@ const Index = () => {
             className="space-y-8"
           >
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight text-[#25324B]">
-              {t("findDreamJob")}
+              Kickstart your journey to success!
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: "6rem" }}
@@ -218,3 +219,4 @@ const Index = () => {
 };
 
 export default Index;
+
