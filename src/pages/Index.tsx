@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, MapPin, Building2, Users } from "lucide-react";
@@ -9,11 +8,32 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
 import { Globe } from "@/components/ui/globe";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { t } = useLanguage();
   const navigate = useNavigate();
+
+  const { data: featuredJobs = [], isLoading } = useQuery({
+    queryKey: ['featuredJobs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('status', 'open')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (error) {
+        console.error('Error fetching featured jobs:', error);
+        return [];
+      }
+
+      return data || [];
+    },
+  });
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -22,33 +42,6 @@ const Index = () => {
     }
     navigate(`/jobs?${params.toString()}`);
   };
-
-  const featuredJobs = [
-    {
-      id: 1,
-      title: "Software Engineer Intern",
-      company: "TechCorp International",
-      location: "San Francisco, CA",
-      type: "Internship",
-      visa: "F1 OPT",
-    },
-    {
-      id: 2,
-      title: "Data Scientist",
-      company: "Global Analytics Co",
-      location: "New York, NY",
-      type: "Full-time",
-      visa: "H1B Sponsorship",
-    },
-    {
-      id: 3,
-      title: "Product Manager",
-      company: "Innovation Labs",
-      location: "Austin, TX",
-      type: "Full-time",
-      visa: "CPT Eligible",
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-[#F8F8FD]">
@@ -169,34 +162,57 @@ const Index = () => {
           {t("featuredJobs")}
         </motion.h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {featuredJobs.map((job, index) => (
-            <motion.div
-              key={job.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.1 * index }}
-              whileHover={{ scale: 1.03 }}
-              className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-semibold text-lg mb-1 text-[#25324B]">{job.title}</h3>
-                  <p className="text-[#515B6F]">{job.company}</p>
+          {isLoading ? (
+            Array(3).fill(0).map((_, index) => (
+              <div key={index} className="bg-white p-6 rounded-xl shadow-sm animate-pulse">
+                <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
+                <div className="flex gap-2">
+                  <div className="h-6 bg-gray-200 rounded w-16"></div>
+                  <div className="h-6 bg-gray-200 rounded w-24"></div>
                 </div>
               </div>
-              <div className="flex items-center text-[#515B6F] mb-4">
-                <MapPin className="w-4 h-4 mr-1" />
-                <span className="text-sm">{job.location}</span>
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                <Badge variant="secondary" className="bg-[#F8F8FD] text-[#515B6F]">
-                  {job.type}
-                </Badge>
-                <Badge className="bg-primary">{job.visa}</Badge>
-              </div>
-            </motion.div>
-          ))}
+            ))
+          ) : featuredJobs.length > 0 ? (
+            featuredJobs.map((job) => (
+              <motion.div
+                key={job.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5 }}
+                whileHover={{ scale: 1.03 }}
+                className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 cursor-pointer"
+                onClick={() => navigate(`/jobs/${job.id}`)}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-1 text-[#25324B]">{job.title}</h3>
+                    <p className="text-[#515B6F]">{job.company}</p>
+                  </div>
+                </div>
+                <div className="flex items-center text-[#515B6F] mb-4">
+                  <MapPin className="w-4 h-4 mr-1" />
+                  <span className="text-sm">{job.location}</span>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Badge variant="secondary" className="bg-[#F8F8FD] text-[#515B6F]">
+                    {job.job_type}
+                  </Badge>
+                  {job.visa_sponsorship && (
+                    <Badge className="bg-primary">
+                      {t("visaSponsorship")}
+                    </Badge>
+                  )}
+                </div>
+              </motion.div>
+            ))
+          ) : (
+            <div className="col-span-3 text-center text-gray-500 py-8">
+              No featured jobs available at the moment.
+            </div>
+          )}
         </div>
         <motion.div 
           initial={{ opacity: 0 }}
@@ -219,4 +235,3 @@ const Index = () => {
 };
 
 export default Index;
-
