@@ -31,6 +31,7 @@ type Application = {
     company: string;
   };
   applicant: {
+    id: string;
     full_name: string;
     title: string;
     cv_url: string | null;
@@ -66,6 +67,7 @@ const JobApplications = () => {
               company
             ),
             profiles!applications_applicant_id_fkey (
+              id,
               full_name,
               title,
               cv_url
