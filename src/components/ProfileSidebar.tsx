@@ -20,7 +20,7 @@ export function ProfileSidebar() {
     },
     {
       label: "My Jobs",
-      href: "/profile/jobs",
+      href: "/jobs",
       icon: (
         <Briefcase className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
       ),
@@ -87,3 +87,4 @@ export function ProfileSidebar() {
     </Sidebar>
   );
 }
+
