@@ -2,7 +2,7 @@
 export const translations = {
   en: {
     search: "Search jobs, companies, or keywords...",
-    findDreamJob: "Kickstart your journey to success!",
+    findDreamJob: "Unlock Your Career Potential with Studyfin's Exclusive Employment Opportunities in Australia",
     opportunities: "Discover opportunities that support international students and provide visa sponsorship",
     searchJobs: "Search Jobs",
     jobsPosted: "Jobs Posted",
