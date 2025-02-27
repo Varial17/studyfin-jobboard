@@ -6,6 +6,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { ProfileSidebar } from "@/components/ProfileSidebar";
 import { useToast } from "@/components/ui/use-toast";
+import { Github, Linkedin, Phone } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -35,6 +36,9 @@ type Application = {
     full_name: string;
     title: string;
     cv_url: string | null;
+    phone_number?: string;
+    github_url?: string;
+    linkedin_url?: string;
   };
   cover_letter: string | null;
 };
@@ -70,7 +74,10 @@ const JobApplications = () => {
               id,
               full_name,
               title,
-              cv_url
+              cv_url,
+              phone_number,
+              github_url,
+              linkedin_url
             )
           `)
           .order("created_at", { ascending: false });
@@ -157,6 +164,7 @@ const JobApplications = () => {
                     <TableHead>{t("company")}</TableHead>
                     <TableHead>{t("appliedDate")}</TableHead>
                     <TableHead>{t("resume")}</TableHead>
+                    <TableHead>{t("contact")}</TableHead>
                     <TableHead>{t("status")}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -196,6 +204,41 @@ const JobApplications = () => {
                         ) : (
                           <span className="text-gray-500">{t("noCVUploaded")}</span>
                         )}
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-3">
+                          {application.applicant?.phone_number && (
+                            <a
+                              href={`tel:${application.applicant.phone_number}`}
+                              className="text-gray-600 hover:text-blue-600"
+                              title={application.applicant.phone_number}
+                            >
+                              <Phone className="w-5 h-5" />
+                            </a>
+                          )}
+                          {application.applicant?.github_url && (
+                            <a
+                              href={application.applicant.github_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-gray-600 hover:text-blue-600"
+                              title="GitHub Profile"
+                            >
+                              <Github className="w-5 h-5" />
+                            </a>
+                          )}
+                          {application.applicant?.linkedin_url && (
+                            <a
+                              href={application.applicant.linkedin_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-gray-600 hover:text-blue-600"
+                              title="LinkedIn Profile"
+                            >
+                              <Linkedin className="w-5 h-5" />
+                            </a>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Select
