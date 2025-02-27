@@ -21,19 +21,40 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const { error } = isLogin
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password });
+      if (isLogin) {
+        const { data: { user }, error } = await supabase.auth.signInWithPassword({ 
+          email, 
+          password 
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      if (!isLogin) {
+        // Check if user has completed their profile
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, title")
+          .eq("id", user?.id)
+          .single();
+
+        navigate("/profile");
+        
+        // Show prompt if profile is incomplete
+        if (!profile?.full_name || !profile?.title) {
+          toast({
+            title: t("welcomeToStudyFin"),
+            description: t("pleaseCompleteProfile"),
+            duration: 6000,
+          });
+        }
+      } else {
+        const { error } = await supabase.auth.signUp({ email, password });
+
+        if (error) throw error;
+
         toast({
           title: t("signupSuccess"),
           description: t("verifyEmail"),
         });
-      } else {
-        navigate("/");
       }
     } catch (error: any) {
       toast({

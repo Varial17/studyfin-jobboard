@@ -1,4 +1,3 @@
-
 export const translations = {
   en: {
     search: "Search jobs, companies, or keywords...",
@@ -70,7 +69,7 @@ export const translations = {
     company: "Company",
     appliedDate: "Applied Date",
     resume: "Resume",
-    contact: "Contact",  // Added this new translation
+    contact: "Contact",
     status: "Status",
     unnamed: "Unnamed",
     noTitle: "No Title",
@@ -90,6 +89,8 @@ export const translations = {
     submit: "Submit",
     applyingFor: "Applying for",
     visaSponsorship: "Visa Sponsorship",
+    welcomeToStudyFin: "Welcome to StudyFin!",
+    pleaseCompleteProfile: "Please complete your profile before applying for jobs. This will help employers learn more about you.",
   },
   zh: {
     search: "搜索工作、公司或关键词...",
@@ -161,7 +162,7 @@ export const translations = {
     company: "公司",
     appliedDate: "申请日期",
     resume: "简历",
-    contact: "联系方式",  // Added this new translation
+    contact: "联系方式",
     status: "状态",
     unnamed: "未命名",
     noTitle: "无职位",
@@ -181,6 +182,7 @@ export const translations = {
     submit: "提交",
     applyingFor: "申请职位",
     visaSponsorship: "提供签证赞助",
+    welcomeToStudyFin: "欢迎来到 StudyFin！",
+    pleaseCompleteProfile: "在申请工作之前请完善您的个人资料。这将帮助雇主更好地了解您。",
   },
-};
-
+} as const;
