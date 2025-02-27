@@ -41,7 +41,7 @@ export function ProfileSidebar() {
     },
     {
       label: "Settings",
-      href: "/profile/settings",
+      href: "/profile",
       icon: (
         <Settings className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
       ),
@@ -87,4 +87,3 @@ export function ProfileSidebar() {
     </Sidebar>
   );
 }
-
