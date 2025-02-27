@@ -92,7 +92,7 @@ export const translations = {
   },
   zh: {
     search: "搜索工作、公司或关键词...",
-    findDreamJob: "开启你的成功之路！",
+    findDreamJob: "启航你的梦想职业生涯",
     opportunities: "发现支持国际学生并提供签证赞助的机会",
     searchJobs: "搜索工作",
     jobsPosted: "已发布工作",
