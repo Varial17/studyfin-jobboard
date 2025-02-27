@@ -20,14 +20,31 @@ const Auth = () => {
   const { t } = useLanguage();
 
   useEffect(() => {
-    // Check if we're in password reset mode
     const params = new URLSearchParams(location.hash.substring(1));
-    if (location.search.includes('type=reset') && params.get('access_token')) {
-      setIsResettingPassword(true);
-      setIsForgotPassword(false);
-      setIsLogin(false);
+    const searchParams = new URLSearchParams(location.search);
+    const isResetMode = searchParams.get('type') === 'reset';
+    const error = params.get('error');
+    const errorDescription = params.get('error_description');
+
+    if (isResetMode) {
+      if (error) {
+        // Handle error cases
+        toast({
+          variant: "destructive",
+          title: t("error"),
+          description: errorDescription || "Password reset link is invalid or has expired. Please request a new one.",
+          duration: 6000,
+        });
+        setIsLogin(true);
+        setIsForgotPassword(false);
+        setIsResettingPassword(false);
+      } else if (params.get('access_token')) {
+        setIsResettingPassword(true);
+        setIsForgotPassword(false);
+        setIsLogin(false);
+      }
     }
-  }, [location]);
+  }, [location, toast, t]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,12 +52,11 @@ const Auth = () => {
 
     try {
       if (isResettingPassword) {
-        // Handle password reset with the new password
         const params = new URLSearchParams(location.hash.substring(1));
         const access_token = params.get('access_token');
         
         if (!access_token) {
-          throw new Error("No access token found");
+          throw new Error("No access token found. Please request a new password reset link.");
         }
 
         const { error } = await supabase.auth.updateUser({
@@ -51,7 +67,8 @@ const Auth = () => {
 
         toast({
           title: t("success"),
-          description: "Password updated successfully",
+          description: "Password updated successfully. Please login with your new password.",
+          duration: 5000,
         });
         
         // Reset states and redirect to login
@@ -60,19 +77,22 @@ const Auth = () => {
         setPassword("");
         
       } else if (isForgotPassword) {
+        console.log("Sending password reset email to:", email);
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/auth?type=reset`,
         });
         
-        console.log("Password reset attempt for:", email);
         if (error) {
-          console.error("Password reset error:", error);
+          if (error.message.includes('rate limit')) {
+            throw new Error("Too many password reset attempts. Please wait a few minutes before trying again.");
+          }
           throw error;
         }
 
         toast({
           title: t("checkEmail"),
-          description: t("passwordResetSent"),
+          description: "If an account exists with this email, you will receive a password reset link. Please check your spam folder if you don't see it.",
+          duration: 6000,
         });
         setIsForgotPassword(false);
       } else if (isLogin) {
@@ -83,7 +103,6 @@ const Auth = () => {
 
         if (error) throw error;
 
-        // Check if user has completed their profile
         const { data: profile } = await supabase
           .from("profiles")
           .select("full_name, title")
@@ -92,7 +111,6 @@ const Auth = () => {
 
         navigate("/profile");
         
-        // Show prompt if profile is incomplete
         if (!profile?.full_name || !profile?.title) {
           toast({
             title: t("welcomeToStudyFin"),
@@ -116,6 +134,7 @@ const Auth = () => {
         variant: "destructive",
         title: t("error"),
         description: error.message || "An unexpected error occurred",
+        duration: 6000,
       });
     } finally {
       setLoading(false);
@@ -162,6 +181,7 @@ const Auth = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
               />
             </div>
           )}
