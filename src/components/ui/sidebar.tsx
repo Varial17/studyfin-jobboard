@@ -90,6 +90,15 @@ export const DesktopSidebar = ({
 }: HTMLMotionProps<"div">) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const modifiedChildren = React.Children.map(children, (child) => {
+    if (React.isValidElement(child)) {
+      return React.cloneElement(child as React.ReactElement<any>, {
+        expanded: isExpanded,
+      });
+    }
+    return child;
+  });
+
   return (
     <motion.div
       className={cn(
@@ -100,12 +109,7 @@ export const DesktopSidebar = ({
       onMouseLeave={() => setIsExpanded(false)}
       {...props}
     >
-      {React.Children.map(children, child => {
-        if (React.isValidElement(child)) {
-          return React.cloneElement(child as React.ReactElement<any>, { expanded: isExpanded });
-        }
-        return child;
-      })}
+      {modifiedChildren}
     </motion.div>
   );
 };
@@ -184,7 +188,11 @@ export const SidebarLink = ({
       {...props}
     >
       {link.icon}
-      <span className={`text-neutral-600 dark:text-neutral-300 text-sm font-medium ml-3 transition-all duration-300 ${expanded ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'}`}>
+      <span
+        className={`text-neutral-600 dark:text-neutral-300 text-sm font-medium ml-3 transition-all duration-300 ${
+          expanded ? "opacity-100 w-auto" : "opacity-0 w-0 hidden"
+        }`}
+      >
         {link.label}
       </span>
     </Link>
