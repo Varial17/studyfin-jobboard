@@ -122,6 +122,10 @@ const JobApplications = () => {
     }
   };
 
+  const handleRowClick = (applicantId: string) => {
+    navigate(`/profile/applicant/${applicantId}`);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -156,10 +160,14 @@ const JobApplications = () => {
                 </TableHeader>
                 <TableBody>
                   {applications.map((application) => (
-                    <TableRow key={application.id}>
+                    <TableRow 
+                      key={application.id}
+                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-700"
+                      onClick={() => handleRowClick(application.applicant?.id)}
+                    >
                       <TableCell>
                         <div>
-                          <div className="font-medium">
+                          <div className="font-medium hover:text-blue-600">
                             {application.applicant?.full_name || t("unnamed")}
                           </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -179,6 +187,7 @@ const JobApplications = () => {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:underline"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             {t("viewCV")}
                           </a>
@@ -186,7 +195,7 @@ const JobApplications = () => {
                           <span className="text-gray-500">{t("noCVUploaded")}</span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <Select
                           defaultValue={application.status}
                           onValueChange={(value) =>
@@ -220,4 +229,3 @@ const JobApplications = () => {
 };
 
 export default JobApplications;
-
