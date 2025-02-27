@@ -20,41 +20,70 @@ const Auth = () => {
   const { t } = useLanguage();
 
   useEffect(() => {
+    // Extract parameters from both URL hash and search params
     const params = new URLSearchParams(location.hash.substring(1));
     const searchParams = new URLSearchParams(location.search);
     const isResetMode = searchParams.get('type') === 'reset';
+    
+    // Check for errors in the hash params
     const error = params.get('error');
     const errorDescription = params.get('error_description');
+    
+    // Check for access token in the hash (new format)
+    const accessToken = params.get('access_token');
+    const tokenType = params.get('type');
+    
+    // Check URL parameters from search (old format)
+    const token = searchParams.get('token');
+    const type = searchParams.get('type');
+    const emailFromUrl = searchParams.get('email');
 
-    // Check the URL parameters as soon as the component mounts
-    const token = new URLSearchParams(location.search).get('token');
-    const type = new URLSearchParams(location.search).get('type');
-    const emailFromUrl = new URLSearchParams(location.search).get('email');
-
-    if (isResetMode) {
-      if (error) {
-        let errorMsg = errorDescription;
-        if (error === "access_denied" || errorDescription?.includes("invalid")) {
-          errorMsg = "The password reset link is invalid or has expired. Please request a new one.";
-        }
-        
-        toast({
-          variant: "destructive",
-          title: t("error"),
-          description: errorMsg,
-          duration: 6000,
-        });
-        setIsLogin(true);
-        setIsForgotPassword(false);
-        setIsResettingPassword(false);
-      } else if (params.get('access_token')) {
-        setIsResettingPassword(true);
-        setIsForgotPassword(false);
-        setIsLogin(false);
+    console.log("URL Debug:", {
+      hash: location.hash,
+      hash_params: {
+        accessToken,
+        tokenType,
+        error,
+        errorDescription
+      },
+      search: location.search,
+      search_params: {
+        token,
+        type,
+        emailFromUrl,
+        isResetMode
       }
+    });
+
+    // Handle errors
+    if (error) {
+      let errorMsg = errorDescription;
+      if (error === "access_denied" || errorDescription?.includes("invalid")) {
+        errorMsg = "The password reset link is invalid or has expired. Please request a new one.";
+      }
+      
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: errorMsg,
+        duration: 6000,
+      });
+      setIsLogin(true);
+      setIsForgotPassword(false);
+      setIsResettingPassword(false);
+      return;
     }
 
-    // Handle direct token verification
+    // Handle hash-based recovery token (new format)
+    if (accessToken && tokenType === 'recovery') {
+      console.log("Found access_token in hash with recovery type");
+      setIsResettingPassword(true);
+      setIsForgotPassword(false);
+      setIsLogin(false);
+      return;
+    }
+    
+    // Handle query param based recovery token (old format)
     if (token && type === 'recovery' && emailFromUrl) {
       const verifyToken = async () => {
         try {
@@ -88,6 +117,12 @@ const Auth = () => {
 
       verifyToken();
     }
+    
+    // When we detect we're in reset mode but no specific tokens yet,
+    // this could be a page load before the hash is processed
+    if (isResetMode && !accessToken && !token) {
+      console.log("Reset mode detected but no tokens found yet");
+    }
   }, [location, toast, t]);
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -96,6 +131,7 @@ const Auth = () => {
 
     try {
       if (isResettingPassword) {
+        // Extract the access token from the URL hash
         const params = new URLSearchParams(location.hash.substring(1));
         const access_token = params.get('access_token');
         
@@ -103,6 +139,9 @@ const Auth = () => {
           throw new Error("No access token found. Please request a new password reset link.");
         }
 
+        console.log("Updating password with token");
+        
+        // The session is already set by Supabase when navigating with the recovery token
         const { error } = await supabase.auth.updateUser({
           password: password
         });
@@ -280,4 +319,3 @@ const Auth = () => {
 };
 
 export default Auth;
-
