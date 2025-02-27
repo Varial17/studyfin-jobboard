@@ -12,6 +12,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -21,7 +22,19 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      if (isLogin) {
+      if (isForgotPassword) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/auth?type=reset`,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: t("checkEmail"),
+          description: t("passwordResetSent"),
+        });
+        setIsForgotPassword(false);
+      } else if (isLogin) {
         const { data: { user }, error } = await supabase.auth.signInWithPassword({ 
           email, 
           password 
@@ -71,9 +84,15 @@ const Auth = () => {
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-lg shadow-lg">
         <div className="text-center">
-          <h2 className="text-3xl font-bold">{isLogin ? t("login") : t("signup")}</h2>
+          <h2 className="text-3xl font-bold">
+            {isForgotPassword 
+              ? t("forgotPassword") 
+              : isLogin ? t("login") : t("signup")}
+          </h2>
           <p className="mt-2 text-gray-600">
-            {isLogin ? t("loginDescription") : t("signupDescription")}
+            {isForgotPassword 
+              ? t("forgotPasswordDesc") 
+              : isLogin ? t("loginDescription") : t("signupDescription")}
           </p>
         </div>
 
@@ -87,25 +106,52 @@ const Auth = () => {
               required
             />
           </div>
-          <div>
-            <Input
-              type="password"
-              placeholder={t("password")}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+          {!isForgotPassword && (
+            <div>
+              <Input
+                type="password"
+                placeholder={t("password")}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+          )}
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? t("loading") : isLogin ? t("login") : t("signup")}
+            {loading 
+              ? t("loading") 
+              : isForgotPassword 
+                ? t("sendResetLink")
+                : isLogin ? t("login") : t("signup")}
           </Button>
         </form>
 
-        <div className="text-center">
+        <div className="text-center space-y-2">
+          {isLogin && !isForgotPassword && (
+            <Button
+              variant="link"
+              onClick={() => setIsForgotPassword(true)}
+              className="text-primary"
+            >
+              {t("forgotPasswordLink")}
+            </Button>
+          )}
+          {isForgotPassword && (
+            <Button
+              variant="link"
+              onClick={() => setIsForgotPassword(false)}
+              className="text-primary"
+            >
+              {t("backToLogin")}
+            </Button>
+          )}
           <Button
             variant="link"
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-primary"
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setIsForgotPassword(false);
+            }}
+            className="text-primary block w-full"
           >
             {isLogin ? t("needAccount") : t("alreadyHaveAccount")}
           </Button>
