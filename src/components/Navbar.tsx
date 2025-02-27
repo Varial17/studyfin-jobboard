@@ -32,7 +32,7 @@ export const Navbar = () => {
             onClick={() => setLanguage(language === "en" ? "zh" : "en")}
             className="flex items-center gap-2"
           >
-            {t("language")}: {language.toUpperCase()}
+            {t("language")}: {language === "zh" ? "CN" : "EN"}
           </Button>
           {user ? (
             <div className="flex items-center gap-2">
