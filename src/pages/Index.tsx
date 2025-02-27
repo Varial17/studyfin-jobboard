@@ -64,7 +64,7 @@ const Index = () => {
             className="space-y-8"
           >
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight text-[#25324B]">
-              Kickstart your journey to success!
+              {t("findDreamJob")}
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: "6rem" }}
