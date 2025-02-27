@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, MapPin, Building2, Users } from "lucide-react";
@@ -8,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
+import { Globe } from "@/components/ui/globe";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -123,14 +123,10 @@ const Index = () => {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
-            className="hidden lg:block relative"
+            className="relative hidden lg:block h-[600px]"
           >
             <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-secondary/20 rounded-full blur-3xl animate-pulse" />
-            <img
-              src="/lovable-uploads/b6036afc-422e-4dc6-bdc2-936db28c6bc2.png"
-              alt="Hero"
-              className="relative w-full h-auto object-cover rounded-lg hover:scale-[1.02] transition-transform duration-500"
-            />
+            <Globe className="hover:scale-105 transition-transform duration-500" />
           </motion.div>
         </div>
 
@@ -222,4 +218,3 @@ const Index = () => {
 };
 
 export default Index;
-

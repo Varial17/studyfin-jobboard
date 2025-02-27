@@ -5,7 +5,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, LogOut } from "lucide-react";
-import { Globe } from "./ui/globe";
 
 export const Navbar = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -20,8 +19,12 @@ export const Navbar = () => {
   return (
     <nav className="bg-white shadow-sm">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-        <Link to="/" className="relative w-12 h-12">
-          <Globe className="opacity-80 hover:opacity-100 transition-opacity" />
+        <Link to="/">
+          <img 
+            src="/lovable-uploads/b6036afc-422e-4dc6-bdc2-936db28c6bc2.png" 
+            alt="StudyFin Logo" 
+            className="h-8"
+          />
         </Link>
         <div className="flex items-center gap-4">
           <Button
