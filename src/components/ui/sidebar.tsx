@@ -83,25 +83,12 @@ export const SidebarBody = ({ children, ...props }: SidebarBodyProps) => {
   );
 };
 
-interface SidebarChildProps {
-  expanded?: boolean;
-}
-
 export const DesktopSidebar = ({
   className,
   children,
   ...props
 }: HTMLMotionProps<"div">) => {
   const [isExpanded, setIsExpanded] = useState(false);
-
-  const modifiedChildren = React.Children.map(children as React.ReactElement[], (child) => {
-    if (React.isValidElement(child)) {
-      return React.cloneElement(child, {
-        expanded: isExpanded,
-      } as SidebarChildProps);
-    }
-    return child;
-  });
 
   return (
     <motion.div
@@ -113,7 +100,7 @@ export const DesktopSidebar = ({
       onMouseLeave={() => setIsExpanded(false)}
       {...props}
     >
-      {modifiedChildren}
+      {children}
     </motion.div>
   );
 };
@@ -172,33 +159,38 @@ export const MobileSidebar = ({
 export const SidebarLink = ({
   link,
   className,
-  expanded,
   ...props
 }: {
   link: Links;
   className?: string;
-  expanded?: boolean;
 }) => {
   const isActive = window.location.pathname === link.href;
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
     <Link
       to={link.href}
       className={cn(
-        "flex items-center py-3 px-4 rounded-lg hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 transition-all duration-200 group/link",
+        "flex items-center py-3 px-4 rounded-lg hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 transition-all duration-200 group/link relative overflow-hidden",
         isActive && "bg-neutral-100/80 dark:bg-neutral-800/80 active",
         className
       )}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       {...props}
     >
       {link.icon}
-      <span
-        className={`text-neutral-600 dark:text-neutral-300 text-sm font-medium ml-3 transition-all duration-300 ${
-          expanded ? "opacity-100 w-auto" : "opacity-0 w-0 hidden"
-        }`}
+      <motion.span
+        initial={{ opacity: 0, width: 0 }}
+        animate={{ 
+          opacity: isHovered || document.querySelector(".group:hover") ? 1 : 0,
+          width: isHovered || document.querySelector(".group:hover") ? "auto" : 0
+        }}
+        transition={{ duration: 0.2 }}
+        className="text-neutral-600 dark:text-neutral-300 text-sm font-medium ml-3 whitespace-nowrap overflow-hidden"
       >
         {link.label}
-      </span>
+      </motion.span>
     </Link>
   );
 };
