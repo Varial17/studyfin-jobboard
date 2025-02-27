@@ -83,6 +83,10 @@ export const SidebarBody = ({ children, ...props }: SidebarBodyProps) => {
   );
 };
 
+interface SidebarChildProps {
+  expanded?: boolean;
+}
+
 export const DesktopSidebar = ({
   className,
   children,
@@ -90,11 +94,11 @@ export const DesktopSidebar = ({
 }: HTMLMotionProps<"div">) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const modifiedChildren = React.Children.map(children, (child) => {
+  const modifiedChildren = React.Children.map(children as React.ReactElement[], (child) => {
     if (React.isValidElement(child)) {
-      return React.cloneElement(child as React.ReactElement<any>, {
+      return React.cloneElement(child, {
         expanded: isExpanded,
-      });
+      } as SidebarChildProps);
     }
     return child;
   });
