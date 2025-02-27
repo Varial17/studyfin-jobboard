@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Navbar } from "@/components/Navbar";
+import { motion } from "framer-motion";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -55,17 +56,32 @@ const Index = () => {
       {/* Hero Section */}
       <section className="container px-4 md:px-8 pt-16 lg:pt-24">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div className="space-y-8">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="space-y-8"
+          >
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight text-[#25324B]">
               {t("findDreamJob")}
-              <div className="h-2 w-24 bg-primary mt-2" />
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: "6rem" }}
+                transition={{ duration: 0.8, delay: 0.3 }}
+                className="h-2 bg-primary mt-2"
+              />
             </h1>
             <p className="text-[#515B6F] text-lg md:text-xl max-w-xl">
               {t("opportunities")}
             </p>
 
             {/* Search Bar */}
-            <div className="bg-white rounded-lg shadow-lg p-4 space-y-4">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="bg-white rounded-lg shadow-lg p-4 space-y-4"
+            >
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1 flex items-center gap-3 p-3 border rounded-md">
                   <Search className="w-5 h-5 text-gray-400" />
@@ -79,7 +95,7 @@ const Index = () => {
                   />
                 </div>
                 <Button 
-                  className="w-full md:w-auto bg-[#4640DE] hover:bg-[#4640DE]/90 text-white px-8"
+                  className="w-full md:w-auto bg-[#4640DE] hover:bg-[#4640DE]/90 text-white px-8 transition-all duration-300 hover:scale-105"
                   onClick={handleSearch}
                 >
                   {t("searchJobs")}
@@ -90,7 +106,7 @@ const Index = () => {
                 {["Software Engineer", "Data Scientist", "Product Manager", "UI/UX Designer"].map((term) => (
                   <button
                     key={term}
-                    className="hover:text-primary transition-colors"
+                    className="hover:text-primary transition-colors duration-300"
                     onClick={() => {
                       setSearchQuery(term);
                       handleSearch();
@@ -100,17 +116,22 @@ const Index = () => {
                   </button>
                 ))}
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
-          <div className="hidden lg:block relative">
-            <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-secondary/20 rounded-full blur-3xl" />
+          <motion.div 
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            className="hidden lg:block relative"
+          >
+            <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-secondary/20 rounded-full blur-3xl animate-pulse" />
             <img
               src="/lovable-uploads/b6036afc-422e-4dc6-bdc2-936db28c6bc2.png"
               alt="Hero"
-              className="relative w-full h-auto object-cover rounded-lg"
+              className="relative w-full h-auto object-cover rounded-lg hover:scale-[1.02] transition-transform duration-500"
             />
-          </div>
+          </motion.div>
         </div>
 
         {/* Stats Section */}
@@ -120,9 +141,13 @@ const Index = () => {
             { icon: Users, text: "500+ " + t("companies"), color: "from-purple-500/20 to-purple-500/5" },
             { icon: MapPin, text: "50+ " + t("locations"), color: "from-pink-500/20 to-pink-500/5" },
           ].map((stat, index) => (
-            <div
+            <motion.div
               key={index}
-              className={`p-6 rounded-xl bg-gradient-to-br ${stat.color} backdrop-blur-sm border border-white/10`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 * (index + 1) }}
+              whileHover={{ scale: 1.05 }}
+              className={`p-6 rounded-xl bg-gradient-to-br ${stat.color} backdrop-blur-sm border border-white/10 transition-all duration-300`}
             >
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-white rounded-lg shadow-sm">
@@ -130,19 +155,32 @@ const Index = () => {
                 </div>
                 <span className="text-lg font-semibold text-[#25324B]">{stat.text}</span>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>
 
       {/* Featured Jobs Section */}
       <section className="container px-4 py-16">
-        <h2 className="text-3xl font-bold mb-8 text-center text-[#25324B]">{t("featuredJobs")}</h2>
+        <motion.h2 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-3xl font-bold mb-8 text-center text-[#25324B]"
+        >
+          {t("featuredJobs")}
+        </motion.h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {featuredJobs.map((job) => (
-            <div
+          {featuredJobs.map((job, index) => (
+            <motion.div
               key={job.id}
-              className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 * index }}
+              whileHover={{ scale: 1.03 }}
+              className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100"
             >
               <div className="flex justify-between items-start mb-4">
                 <div>
@@ -160,21 +198,28 @@ const Index = () => {
                 </Badge>
                 <Badge className="bg-primary">{job.visa}</Badge>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
-        <div className="text-center mt-8">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mt-8"
+        >
           <Button 
             variant="outline" 
-            className="hover:bg-primary hover:text-white"
+            className="hover:bg-primary hover:text-white transition-all duration-300 hover:scale-105"
             onClick={() => navigate("/jobs")}
           >
             {t("viewAllJobs")}
           </Button>
-        </div>
+        </motion.div>
       </section>
     </div>
   );
 };
 
 export default Index;
+
