@@ -89,7 +89,7 @@ const Index = () => {
                   />
                 </div>
                 <Button 
-                  className="w-full md:w-auto bg-[#4640DE] hover:bg-[#4640DE]/90 text-white px-8 transition-all duration-300 hover:scale-105"
+                  className="w-full md:w-auto bg-[#1EAEDB] hover:bg-[#1EAEDB]/90 text-white px-8 transition-all duration-300 hover:scale-105"
                   onClick={handleSearch}
                 >
                   {t("searchJobs")}
