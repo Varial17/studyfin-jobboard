@@ -29,6 +29,7 @@ const Auth = () => {
     // Check the URL parameters as soon as the component mounts
     const token = new URLSearchParams(location.search).get('token');
     const type = new URLSearchParams(location.search).get('type');
+    const emailFromUrl = new URLSearchParams(location.search).get('email');
 
     if (isResetMode) {
       if (error) {
@@ -54,13 +55,14 @@ const Auth = () => {
     }
 
     // Handle direct token verification
-    if (token && type === 'recovery') {
+    if (token && type === 'recovery' && emailFromUrl) {
       const verifyToken = async () => {
         try {
           // The token from the URL needs to be verified first
           const { error } = await supabase.auth.verifyOtp({
             token,
-            type: 'recovery'
+            type: 'recovery',
+            email: emailFromUrl
           });
 
           if (error) {
@@ -278,3 +280,4 @@ const Auth = () => {
 };
 
 export default Auth;
+
