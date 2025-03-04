@@ -1,10 +1,11 @@
+
 export const translations = {
   en: {
     search: "Search jobs, companies, or keywords...",
     findDreamJob: "Kickstart your journey to success!",
     opportunities: "Unlock Your Career Potential with Studyfin's Exclusive Employment Opportunities in Australia",
     searchJobs: "Search Jobs",
-    jobsPosted: "Jobs Posted",
+    jobsPosted: "job available",
     companies: "Companies",
     locations: "Locations",
     featuredJobs: "Featured Jobs",
@@ -104,7 +105,7 @@ export const translations = {
     findDreamJob: "启航你的梦想职业生涯",
     opportunities: "发现支持国际学生并提供签证赞助的机会",
     searchJobs: "搜索工作",
-    jobsPosted: "已发布工作",
+    jobsPosted: "个工作可用",
     companies: "公司",
     locations: "地点",
     featuredJobs: "推荐工作",

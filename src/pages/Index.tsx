@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, MapPin, Building2, Users } from "lucide-react";
@@ -127,7 +128,7 @@ const Index = () => {
         {/* Stats Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
           {[
-            { icon: Building2, text: "1000+ " + t("jobsPosted"), color: "from-blue-500/20 to-blue-500/5" },
+            { icon: Building2, text: "100+ " + t("jobsPosted"), color: "from-blue-500/20 to-blue-500/5" },
             { icon: Users, text: "500+ " + t("companies"), color: "from-purple-500/20 to-purple-500/5" },
             { icon: MapPin, text: "50+ " + t("locations"), color: "from-pink-500/20 to-pink-500/5" },
           ].map((stat, index) => (
