@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,11 +9,10 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Save, CreditCard } from "lucide-react";
 import { RoleSelectionSection } from "@/components/profile/RoleSelectionSection";
-import { StripeService } from "@/services/StripeService";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 const Settings = () => {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, connectionError } = useAuth();
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -37,7 +35,23 @@ const Settings = () => {
   }, [profile]);
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Required",
+        description: "You must be logged in to save settings.",
+      });
+      return;
+    }
+    
+    if (connectionError) {
+      toast({
+        variant: "destructive",
+        title: "Connection Error",
+        description: "Cannot save settings due to connection issues. Please try again when connection is restored.",
+      });
+      return;
+    }
 
     setSaving(true);
     try {

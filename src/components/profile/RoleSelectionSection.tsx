@@ -1,9 +1,8 @@
-
 import { User, Briefcase, ExternalLink } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { StripeService } from "@/services/StripeService";
 import {
   Card,
@@ -28,7 +27,7 @@ interface RoleSelectionSectionProps {
 
 export const RoleSelectionSection = ({ profile, setProfile }: RoleSelectionSectionProps) => {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, connectionError } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -36,6 +35,15 @@ export const RoleSelectionSection = ({ profile, setProfile }: RoleSelectionSecti
   const handleRoleChange = (value: string) => {
     // If they're switching to employer and don't have an active subscription
     if (value === 'employer' && profile.subscription_status !== 'active') {
+      // Check for connection issues before showing the dialog
+      if (connectionError) {
+        toast({
+          variant: "destructive",
+          title: "Connection Error",
+          description: "Cannot change role due to connection issues. Please try again when connection is restored.",
+        });
+        return;
+      }
       setDialogOpen(true);
     } else {
       setProfile({ ...profile, role: value });
@@ -43,7 +51,23 @@ export const RoleSelectionSection = ({ profile, setProfile }: RoleSelectionSecti
   };
 
   const handleSubscribe = async () => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Required",
+        description: "You must be logged in to subscribe.",
+      });
+      return;
+    }
+    
+    if (connectionError) {
+      toast({
+        variant: "destructive",
+        title: "Connection Error",
+        description: "Cannot process subscription due to connection issues. Please try again when connection is restored.",
+      });
+      return;
+    }
     
     setIsLoading(true);
     try {
@@ -55,11 +79,17 @@ export const RoleSelectionSection = ({ profile, setProfile }: RoleSelectionSecti
           title: t("error"),
           description: result.error,
         });
-      } else {
+      } else if (result.url) {
         // Redirect to Stripe Checkout
         window.location.href = result.url;
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Invalid response from payment service. Please try again.",
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: t("error"),

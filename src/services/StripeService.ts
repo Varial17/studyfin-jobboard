@@ -1,6 +1,6 @@
 
 import { supabase, checkSupabaseConnection, handleSupabaseError } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 
 export const StripeService = {
   async createCheckoutSession(userId: string): Promise<{ url: string } | { error: string }> {
