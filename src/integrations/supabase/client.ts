@@ -18,9 +18,29 @@ export const supabase = createClient<Database>(
       persistSession: true,
       autoRefreshToken: true,
       storageKey: 'studyfin-auth-key',
+      detectSessionInUrl: true, // Handle OAuth redirects properly
     },
   }
 );
 
 // Add some debug info to help troubleshoot
 console.log("Supabase client initialized with URL:", SUPABASE_URL);
+
+// Create a helper function to check Supabase connection
+export const checkSupabaseConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('profiles').select('count()', { count: 'exact' }).limit(1);
+    if (error) {
+      console.error("Supabase connection test failed:", error);
+      return false;
+    }
+    console.log("Supabase connection test successful");
+    return true;
+  } catch (error) {
+    console.error("Unexpected error testing Supabase connection:", error);
+    return false;
+  }
+};
+
+// Test connection on init
+checkSupabaseConnection();

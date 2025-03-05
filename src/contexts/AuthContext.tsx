@@ -55,31 +55,53 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const refreshProfile = async () => {
     if (!user) return;
+    
     console.log("Refreshing profile for user:", user.id);
-    const profileData = await fetchProfile(user.id);
-    setProfile(profileData);
+    try {
+      const profileData = await fetchProfile(user.id);
+      if (profileData) {
+        setProfile(profileData);
+      } else {
+        console.log("No profile data found during refresh");
+      }
+    } catch (error) {
+      console.error("Error in refreshProfile:", error);
+    }
   };
 
   useEffect(() => {
     // Check active sessions and sets the user
     console.log("Initializing auth context");
+    
     const initializeAuth = async () => {
       try {
+        setLoading(true);
+        // Get session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error("Error getting session:", error);
+          toast({
+            variant: "destructive",
+            title: "Authentication error",
+            description: "There was a problem connecting to the authentication service.",
+          });
           setLoading(false);
           return;
         }
         
-        console.log("Auth session check:", session ? "Active session" : "No session");
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
+        console.log("Auth session check:", session ? "Active session found" : "No active session");
         
-        if (currentUser) {
-          const profileData = await fetchProfile(currentUser.id);
-          setProfile(profileData);
+        if (session?.user) {
+          setUser(session.user);
+          
+          // Fetch profile
+          try {
+            const profileData = await fetchProfile(session.user.id);
+            setProfile(profileData);
+          } catch (profileError) {
+            console.error("Error fetching initial profile:", profileError);
+          }
         }
       } catch (error) {
         console.error("Error in auth initialization:", error);
@@ -91,23 +113,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     initializeAuth();
 
     // Listen for changes on auth state (login, sign out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event);
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      
-      if (currentUser) {
-        const profileData = await fetchProfile(currentUser.id);
-        setProfile(profileData);
-      } else {
-        setProfile(null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("Auth state changed:", event);
+        
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          if (session?.user) {
+            setUser(session.user);
+            try {
+              const profileData = await fetchProfile(session.user.id);
+              setProfile(profileData);
+            } catch (profileError) {
+              console.error("Error fetching profile after auth state change:", profileError);
+            }
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setProfile(null);
+        }
+        
+        setLoading(false);
       }
-      
-      setLoading(false);
-    });
+    );
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [toast]);
 
   return (
     <AuthContext.Provider value={{ user, profile, loading, refreshProfile }}>
