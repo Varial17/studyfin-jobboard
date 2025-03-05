@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { ProfileSidebar } from "@/components/ProfileSidebar";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Navbar } from "@/components/Navbar";
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type JobFormData = {
   title: string;
@@ -25,12 +22,11 @@ type JobFormData = {
 };
 
 const PostJob = () => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isEmployer, setIsEmployer] = useState(false);
 
   const [formData, setFormData] = useState<JobFormData>({
     title: "",
@@ -43,17 +39,6 @@ const PostJob = () => {
     visa_sponsorship: false,
   });
 
-  useEffect(() => {
-    // Check if user is logged in and has employer role
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-
-    // Set isEmployer based on profile role
-    setIsEmployer(profile?.role === 'employer');
-  }, [user, profile, navigate]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -61,15 +46,6 @@ const PostJob = () => {
       toast({
         title: t("error"),
         description: "You must be logged in to post a job",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!isEmployer) {
-      toast({
-        title: t("error"),
-        description: "You must have an employer account to post a job",
         variant: "destructive",
       });
       return;
@@ -104,37 +80,6 @@ const PostJob = () => {
       setIsSubmitting(false);
     }
   };
-
-  if (!isEmployer) {
-    return (
-      <div className="flex min-h-screen bg-gray-50 dark:bg-neutral-900">
-        <Navbar />
-        <div className="flex w-full">
-          <ProfileSidebar />
-          <main className="flex-1 px-4 py-8 md:px-8">
-            <div className="max-w-3xl mx-auto">
-              <h1 className="text-2xl font-semibold mb-6">Post a New Job</h1>
-              
-              <Alert variant="destructive" className="mb-6">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Access Denied</AlertTitle>
-                <AlertDescription>
-                  You need an employer account to post jobs. Please update your profile role to "Employer" in your profile settings.
-                </AlertDescription>
-              </Alert>
-              
-              <Button 
-                onClick={() => navigate("/profile")}
-                className="w-full"
-              >
-                Go to Profile Settings
-              </Button>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-neutral-900">
