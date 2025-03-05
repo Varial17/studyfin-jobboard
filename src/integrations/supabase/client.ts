@@ -29,16 +29,13 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
  */
 export const checkSupabaseConnection = async (silent: boolean = false): Promise<boolean> => {
   try {
-    // Instead of using profiles table which seems to cause issues,
-    // Try to make a simple query to the jobs table
-    const { data, error } = await supabase
-      .from('jobs')
-      .select('id')
-      .limit(1);
+    // Use a simple health check instead of a table query
+    // This checks the connection without requiring specific table permissions
+    const { error } = await supabase.from('jobs').select('id').limit(1);
     
     if (error) {
       if (!silent) {
-        console.error("Supabase connection check failed:", error.message);
+        console.error("Supabase connection check failed:", error.message || error);
       }
       return false;
     }
@@ -65,13 +62,28 @@ export const resetConnectionAndRetry = async (): Promise<boolean> => {
     
     // Clear local storage items related to Supabase
     try {
-      localStorage.removeItem('studyfin-auth-storage');
-      localStorage.removeItem('supabase.auth.token');
+      const storageKeys = [
+        'studyfin-auth-storage',
+        'supabase.auth.token',
+        'sb-nluwegaxtjekbpccjuxt-auth-token',
+        'supabase.auth.refreshToken'
+      ];
+      
+      for (const key of storageKeys) {
+        localStorage.removeItem(key);
+      }
     } catch (e) {
       console.log("Error clearing local storage:", e);
     }
     
-    // Wait a moment before trying again
+    // Force reconnection by creating a temporary client
+    const tempClient = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+    const { error } = await tempClient.from('jobs').select('id').limit(1);
+    if (error) {
+      console.error("Failed to connect with temporary client:", error.message || error);
+    }
+    
+    // Wait a moment before trying again with the main client
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Try a simple query to test connection
