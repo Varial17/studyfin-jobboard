@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { ProfileSidebar } from "@/components/ProfileSidebar";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Save, CreditCard } from "lucide-react";
 import { RoleSelectionSection } from "@/components/profile/RoleSelectionSection";
 import { StripeService } from "@/services/StripeService";
