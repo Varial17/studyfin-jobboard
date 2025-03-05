@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { Database } from "@/integrations/supabase/types";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
@@ -30,30 +30,6 @@ const JobDetail = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
-  const [showRoleDialog, setShowRoleDialog] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (user) {
-      const fetchUserRole = async () => {
-        try {
-          const { data, error } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", user.id)
-            .single();
-
-          if (error) throw error;
-          // Handle case where role property might not exist yet
-          setUserRole((data as any).role || 'applicant');
-        } catch (error) {
-          console.error("Error fetching user role:", error);
-        }
-      };
-
-      fetchUserRole();
-    }
-  }, [user]);
 
   const { data: job, isLoading } = useQuery({
     queryKey: ["job", jobId],
@@ -96,12 +72,6 @@ const JobDetail = () => {
       setShowLoginDialog(true);
       return;
     }
-    
-    if (userRole === 'employer') {
-      setShowRoleDialog(true);
-      return;
-    }
-    
     // Use regular navigation instead of opening in new tab
     navigate(`/jobs/${jobId}/apply`);
   };
@@ -185,34 +155,6 @@ const JobDetail = () => {
               }}
             >
               {t("signup")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Role Dialog */}
-      <Dialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("accessDenied")}</DialogTitle>
-            <DialogDescription>
-              {t("applicantRoleRequired")}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex flex-col sm:flex-row sm:justify-center gap-2 mt-4">
-            <Button
-              variant="outline"
-              onClick={() => setShowRoleDialog(false)}
-            >
-              {t("cancel")}
-            </Button>
-            <Button 
-              onClick={() => {
-                setShowRoleDialog(false);
-                navigate("/profile");
-              }}
-            >
-              {t("updateProfile")}
             </Button>
           </DialogFooter>
         </DialogContent>

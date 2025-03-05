@@ -3,26 +3,25 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { supabase, checkSupabaseConnection } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { ProfileSidebar } from "@/components/ProfileSidebar";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { Save, AlertTriangle } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { Save } from "lucide-react";
 import { BasicInfoSection } from "@/components/profile/BasicInfoSection";
 import { ContactInfoSection } from "@/components/profile/ContactInfoSection";
 import { EducationSection } from "@/components/profile/EducationSection";
 import { ProfessionalInfoSection } from "@/components/profile/ProfessionalInfoSection";
 
 const Profile = () => {
-  const { user, loading: authLoading, connectionError } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [profile, setProfile] = useState({
     full_name: "",
     title: "",
@@ -40,44 +39,20 @@ const Profile = () => {
   });
 
   useEffect(() => {
-    // Redirect if not logged in and auth loading is complete
-    if (!authLoading && !user) {
+    if (!user) {
       navigate("/auth");
       return;
     }
 
     const getProfile = async () => {
-      if (!user) return;
-      
       try {
-        setLoadError(null);
-        setLoading(true);
-        
-        // Check connection first
-        const connected = await checkSupabaseConnection();
-        if (!connected) {
-          setLoadError("Could not connect to the database. Please check your network connection.");
-          setLoading(false);
-          return;
-        }
-        
         const { data, error } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", user.id)
           .single();
 
-        if (error) {
-          console.error("Error fetching profile:", error);
-          setLoadError(`Error loading profile: ${error.message}`);
-          toast({
-            variant: "destructive",
-            title: t("error"),
-            description: error.message,
-          });
-          return;
-        }
-        
+        if (error) throw error;
         if (data) {
           setProfile({
             ...profile,
@@ -97,8 +72,6 @@ const Profile = () => {
           });
         }
       } catch (error: any) {
-        console.error("Error in getProfile:", error);
-        setLoadError(`Unexpected error: ${error.message}`);
         toast({
           variant: "destructive",
           title: t("error"),
@@ -109,10 +82,8 @@ const Profile = () => {
       }
     };
 
-    if (user) {
-      getProfile();
-    }
-  }, [user, authLoading, navigate, toast, t]);
+    getProfile();
+  }, [user, navigate, toast, t]);
 
   const handleCVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -161,18 +132,6 @@ const Profile = () => {
 
     setSaving(true);
     try {
-      // Check connection first
-      const connected = await checkSupabaseConnection();
-      if (!connected) {
-        toast({
-          variant: "destructive",
-          title: t("error"),
-          description: "Could not connect to the database. Please check your network connection.",
-        });
-        setSaving(false);
-        return;
-      }
-      
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -198,44 +157,10 @@ const Profile = () => {
     }
   };
 
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8 flex items-center justify-center h-[calc(100vh-80px)]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
-            <span className="text-lg">{t("loading")}</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (loadError || connectionError) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8 flex items-center justify-center h-[calc(100vh-80px)]">
-          <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">
-            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Connection Error</h2>
-            <p className="text-gray-600 mb-4">{loadError || "Could not connect to the database. Please check your network connection."}</p>
-            <Button 
-              onClick={() => window.location.reload()}
-              variant="default"
-            >
-              Retry
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    navigate("/auth");
-    return null;
+  if (loading) {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <span className="text-lg">{t("loading")}</span>
+    </div>;
   }
 
   return (
@@ -276,3 +201,4 @@ const Profile = () => {
 };
 
 export default Profile;
+

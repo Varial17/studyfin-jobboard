@@ -5,37 +5,15 @@ import { useAuth } from "../contexts/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, LogOut } from "lucide-react";
-import { useEffect, useState } from "react";
 
 export const Navbar = () => {
   const { language, setLanguage, t } = useLanguage();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  // Debug logging to help trace authentication issues
-  useEffect(() => {
-    console.log("Navbar auth state:", { user: user?.email || "none", authLoading });
-  }, [user, authLoading]);
 
   const handleLogout = async () => {
-    try {
-      setIsLoggingOut(true);
-      console.log("Logging out user");
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        console.error("Error during logout:", error);
-        throw error;
-      }
-      
-      console.log("Logout successful, navigating to home");
-      navigate("/");
-    } catch (error) {
-      console.error("Logout failed:", error);
-    } finally {
-      setIsLoggingOut(false);
-    }
+    await supabase.auth.signOut();
+    navigate("/");
   };
 
   return (
@@ -56,9 +34,7 @@ export const Navbar = () => {
           >
             {t("language")}: {language === "zh" ? "CN" : "EN"}
           </Button>
-          {authLoading ? (
-            <div className="h-10 w-20 bg-gray-100 animate-pulse rounded-md"></div>
-          ) : user ? (
+          {user ? (
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -71,11 +47,10 @@ export const Navbar = () => {
               <Button
                 variant="ghost"
                 onClick={handleLogout}
-                disabled={isLoggingOut}
                 className="flex items-center gap-2"
               >
                 <LogOut className="w-4 h-4" />
-                {isLoggingOut ? "..." : t("logout")}
+                {t("logout")}
               </Button>
             </div>
           ) : (
