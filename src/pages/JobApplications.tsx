@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -5,7 +6,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { ProfileSidebar } from "@/components/ProfileSidebar";
 import { useToast } from "@/components/ui/use-toast";
-import { Github, Linkedin, Phone } from "lucide-react";
+import { Github, Linkedin, Phone, AlertTriangle } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import {
   Table,
@@ -22,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 type Application = {
   id: string;
@@ -50,12 +52,46 @@ const JobApplications = () => {
   const { toast } = useToast();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
       navigate("/auth");
       return;
     }
+
+    const checkUserRole = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (error) throw error;
+        
+        setUserRole(data?.role || null);
+
+        if (data?.role !== 'employer') {
+          toast({
+            variant: "destructive",
+            title: t("accessDenied"),
+            description: t("employerRoleRequired"),
+          });
+          navigate("/profile");
+          return;
+        }
+
+        fetchApplications();
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: t("error"),
+          description: error.message,
+        });
+        setLoading(false);
+      }
+    };
 
     const fetchApplications = async () => {
       try {
@@ -102,7 +138,7 @@ const JobApplications = () => {
       }
     };
 
-    fetchApplications();
+    checkUserRole();
   }, [user, navigate, t, toast]);
 
   const updateApplicationStatus = async (applicationId: string, newStatus: string) => {
@@ -141,6 +177,22 @@ const JobApplications = () => {
         <Navbar />
         <div className="flex items-center justify-center h-[calc(100vh-64px)]">
           <span className="text-lg">{t("loading")}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (userRole !== 'employer') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="flex items-center justify-center h-[calc(100vh-64px)] flex-col">
+          <AlertTriangle className="w-16 h-16 text-amber-500 mb-4" />
+          <h1 className="text-2xl font-bold mb-2">{t("accessDenied")}</h1>
+          <p className="text-gray-600 mb-4">{t("employerRoleRequired")}</p>
+          <Button onClick={() => navigate("/profile")}>
+            {t("updateProfile")}
+          </Button>
         </div>
       </div>
     );

@@ -10,6 +10,9 @@ import { BasicInfoSection } from "@/components/profile/BasicInfoSection";
 import { ContactInfoSection } from "@/components/profile/ContactInfoSection";
 import { EducationSection } from "@/components/profile/EducationSection";
 import { ProfessionalInfoSection } from "@/components/profile/ProfessionalInfoSection";
+import { RoleSelectionSection } from "@/components/profile/RoleSelectionSection";
+import { Navbar } from "@/components/Navbar";
+import { Badge } from "@/components/ui/badge";
 
 const ApplicantProfile = () => {
   const { applicantId } = useParams();
@@ -32,6 +35,7 @@ const ApplicantProfile = () => {
     cv_url: "",
     github_url: "",
     linkedin_url: "",
+    role: "applicant",
   });
 
   useEffect(() => {
@@ -66,6 +70,7 @@ const ApplicantProfile = () => {
             cv_url: data.cv_url || "",
             github_url: data.github_url || "",
             linkedin_url: data.linkedin_url || "",
+            role: data.role || "applicant",
           });
         }
       } catch (error: any) {
@@ -92,12 +97,19 @@ const ApplicantProfile = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
+      <Navbar />
       <div className="container mx-auto px-4 py-8">
         <div className="flex gap-6">
           <ProfileSidebar />
           <div className="flex-1 max-w-4xl space-y-6">
+            <div className="flex justify-between items-center">
+              <h1 className="text-2xl font-bold">{profile.full_name}</h1>
+              <Badge variant={profile.role === 'applicant' ? 'default' : 'secondary'}>
+                {profile.role === 'applicant' ? t('applicantRole') : t('employerRole')}
+              </Badge>
+            </div>
             <BasicInfoSection profile={profile} setProfile={() => {}} />
-            <ContactInfoSection profile={profile} setProfile={() => {}} />
+            <ContactInfoSection profile={profile} setProfile={() => {}} userEmail={""} />
             <EducationSection profile={profile} setProfile={() => {}} />
             <ProfessionalInfoSection
               profile={profile}
