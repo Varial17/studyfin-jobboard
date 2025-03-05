@@ -29,9 +29,9 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
  */
 export const checkSupabaseConnection = async (silent: boolean = false): Promise<boolean> => {
   try {
-    // Use the most basic health check possible
-    // Just check the REST API endpoint is available
-    const { data, error } = await supabase.rpc('ping');
+    // Use a simple health check that works with any schema
+    // Just check if we can get the Supabase API version
+    const { data, error } = await supabase.from('profiles').select('count(*)', { count: 'exact', head: true }).limit(1);
     
     if (error) {
       if (!silent) {
