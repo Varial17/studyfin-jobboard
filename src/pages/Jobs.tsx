@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Search, MapPin, Filter, AlertTriangle } from "lucide-react";
@@ -56,8 +57,7 @@ const Jobs = () => {
 
   const handleRetryConnection = async () => {
     console.log("Manually retrying connection...");
-    await resetConnectionAndRetry();
-    const connected = await checkSupabaseConnection(true);
+    const connected = await resetConnectionAndRetry();
     setConnectionStatus(connected);
     
     if (connected) {
@@ -83,12 +83,16 @@ const Jobs = () => {
       console.log("Fetching jobs with query:", searchQuery, "location:", locationFilter);
       
       try {
+        // Check connection first to avoid cryptic errors
         if (connectionStatus === false) {
           const connected = await checkSupabaseConnection(true);
           if (!connected) {
             throw new Error("Cannot connect to database");
           }
         }
+        
+        const session = await supabase.auth.getSession();
+        console.log("Current session check:", session?.data?.session ? "Active" : "None");
         
         let query = supabase
           .from("jobs")
@@ -124,7 +128,7 @@ const Jobs = () => {
         throw error;
       }
     },
-    retry: 1,
+    retry: 2,
     retryDelay: 1000,
     enabled: connectionStatus !== false,
   });

@@ -9,7 +9,18 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    storageKey: 'studyfin-auth-storage',
+  },
+  global: {
+    headers: {
+      'x-client-info': 'studyfin-web-app'
+    },
+  },
+});
 
 /**
  * Check if the Supabase connection is working
@@ -19,7 +30,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 export const checkSupabaseConnection = async (silent: boolean = false): Promise<boolean> => {
   try {
     // Try to make a simple query to check connection
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('count(*)', { count: 'exact', head: true })
       .limit(1);
@@ -49,7 +60,12 @@ export const resetConnectionAndRetry = async (): Promise<boolean> => {
     console.log("Attempting to reset Supabase connection...");
     
     // Force a new session refresh
-    await supabase.auth.refreshSession();
+    const { data, error } = await supabase.auth.refreshSession();
+    
+    if (error) {
+      console.error("Error refreshing session:", error.message);
+      return false;
+    }
     
     // Check if connection works after reset
     const connected = await checkSupabaseConnection();
@@ -64,5 +80,28 @@ export const resetConnectionAndRetry = async (): Promise<boolean> => {
   } catch (error) {
     console.error("Error resetting Supabase connection:", error);
     return false;
+  }
+};
+
+/**
+ * Attempts to get the current auth session
+ * @param silent - If true, will not log errors to console
+ * @returns Promise<Session | null> - Current session or null if not authenticated
+ */
+export const getCurrentSession = async (silent: boolean = false) => {
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    
+    if (error && !silent) {
+      console.error("Error getting session:", error.message);
+      return null;
+    }
+    
+    return data.session;
+  } catch (error) {
+    if (!silent) {
+      console.error("Exception getting session:", error);
+    }
+    return null;
   }
 };

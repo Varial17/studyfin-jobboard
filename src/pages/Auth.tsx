@@ -1,13 +1,14 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, checkSupabaseConnection } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -16,119 +17,183 @@ const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const { t } = useLanguage();
   const { user, connectionError, retryConnection } = useAuth();
 
+  // Check for existing session and connection status on mount
   useEffect(() => {
-    if (user) {
+    const checkSession = async () => {
+      try {
+        setInitialLoading(true);
+        console.log("Auth page: checking connection and session");
+        
+        // Check connection first
+        const connected = await checkSupabaseConnection(true);
+        if (!connected) {
+          console.log("Auth page: connection check failed");
+          setInitialLoading(false);
+          return;
+        }
+        
+        // Get current session
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Auth page: Error getting session", error);
+          setInitialLoading(false);
+          return;
+        }
+        
+        console.log("Auth page: session check result:", data.session ? "Active session" : "No session");
+        
+        if (data.session?.user) {
+          // Already logged in, redirect to profile
+          console.log("Auth page: user is already logged in, redirecting to profile");
+          navigate("/profile");
+        }
+      } catch (error) {
+        console.error("Auth page: Error in checkSession", error);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+    
+    checkSession();
+  }, [navigate]);
+
+  // Redirect if user becomes authenticated
+  useEffect(() => {
+    if (user && !initialLoading) {
+      console.log("Auth page: user detected in context, redirecting to profile");
       navigate("/profile");
     }
-  }, [user, navigate]);
+  }, [user, navigate, initialLoading]);
 
+  // Process URL parameters for password reset
   useEffect(() => {
-    const params = new URLSearchParams(location.hash.substring(1));
-    const searchParams = new URLSearchParams(location.search);
-    const isResetMode = searchParams.get('type') === 'reset';
-    
-    const error = params.get('error');
-    const errorDescription = params.get('error_description');
-    
-    const accessToken = params.get('access_token');
-    const tokenType = params.get('type');
-    
-    const token = searchParams.get('token');
-    const type = searchParams.get('type');
-    const emailFromUrl = searchParams.get('email');
+    const processUrlParams = async () => {
+      const params = new URLSearchParams(location.hash.substring(1));
+      const searchParams = new URLSearchParams(location.search);
+      const isResetMode = searchParams.get('type') === 'reset';
+      
+      const error = params.get('error');
+      const errorDescription = params.get('error_description');
+      
+      const accessToken = params.get('access_token');
+      const tokenType = params.get('type');
+      
+      const token = searchParams.get('token');
+      const type = searchParams.get('type');
+      const emailFromUrl = searchParams.get('email');
 
-    console.log("URL Debug:", {
-      hash: location.hash,
-      hash_params: {
-        accessToken,
-        tokenType,
-        error,
-        errorDescription
-      },
-      search: location.search,
-      search_params: {
-        token,
-        type,
-        emailFromUrl,
-        isResetMode
+      console.log("URL Parameters Debug:", {
+        hash: location.hash,
+        hash_params: {
+          accessToken,
+          tokenType,
+          error,
+          errorDescription
+        },
+        search: location.search,
+        search_params: {
+          token,
+          type,
+          emailFromUrl,
+          isResetMode
+        }
+      });
+
+      if (error) {
+        let errorMsg = errorDescription;
+        if (error === "access_denied" || errorDescription?.includes("invalid")) {
+          errorMsg = "The password reset link is invalid or has expired. Please request a new one.";
+        }
+        
+        toast({
+          variant: "destructive",
+          title: t("error"),
+          description: errorMsg,
+          duration: 5000,
+        });
+        setIsLogin(true);
+        setIsForgotPassword(false);
+        setIsResettingPassword(false);
+        return;
       }
-    });
 
-    if (error) {
-      let errorMsg = errorDescription;
-      if (error === "access_denied" || errorDescription?.includes("invalid")) {
-        errorMsg = "The password reset link is invalid or has expired. Please request a new one.";
+      if (accessToken && tokenType === 'recovery') {
+        console.log("Found access_token in hash with recovery type");
+        setIsResettingPassword(true);
+        setIsForgotPassword(false);
+        setIsLogin(false);
+        return;
       }
       
-      toast({
-        variant: "destructive",
-        title: t("error"),
-        description: errorMsg,
-        duration: 5000,
-      });
-      setIsLogin(true);
-      setIsForgotPassword(false);
-      setIsResettingPassword(false);
-      return;
-    }
+      if (token && type === 'recovery' && emailFromUrl) {
+        const verifyToken = async () => {
+          try {
+            const { error } = await supabase.auth.verifyOtp({
+              token,
+              type: 'recovery',
+              email: emailFromUrl
+            });
 
-    if (accessToken && tokenType === 'recovery') {
-      console.log("Found access_token in hash with recovery type");
-      setIsResettingPassword(true);
-      setIsForgotPassword(false);
-      setIsLogin(false);
-      return;
-    }
-    
-    if (token && type === 'recovery' && emailFromUrl) {
-      const verifyToken = async () => {
-        try {
-          const { error } = await supabase.auth.verifyOtp({
-            token,
-            type: 'recovery',
-            email: emailFromUrl
-          });
+            if (error) {
+              throw error;
+            }
 
-          if (error) {
-            throw error;
+            setIsResettingPassword(true);
+            setIsForgotPassword(false);
+            setIsLogin(false);
+          } catch (error: any) {
+            console.error("Token verification error:", error);
+            toast({
+              variant: "destructive",
+              title: t("error"),
+              description: "The password reset link is invalid or has expired. Please request a new one.",
+              duration: 5000,
+            });
+            setIsLogin(true);
+            setIsForgotPassword(false);
+            setIsResettingPassword(false);
           }
+        };
 
-          setIsResettingPassword(true);
-          setIsForgotPassword(false);
-          setIsLogin(false);
-        } catch (error: any) {
-          console.error("Token verification error:", error);
-          toast({
-            variant: "destructive",
-            title: t("error"),
-            description: "The password reset link is invalid or has expired. Please request a new one.",
-            duration: 5000,
-          });
-          setIsLogin(true);
-          setIsForgotPassword(false);
-          setIsResettingPassword(false);
-        }
-      };
-
-      verifyToken();
-    }
+        verifyToken();
+      }
+      
+      if (isResetMode && !accessToken && !token) {
+        console.log("Reset mode detected but no tokens found yet");
+      }
+    };
     
-    if (isResetMode && !accessToken && !token) {
-      console.log("Reset mode detected but no tokens found yet");
+    if (!initialLoading) {
+      processUrlParams();
     }
-  }, [location, toast, t]);
+  }, [location, toast, t, initialLoading]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // Check connection first
+      const connected = await checkSupabaseConnection(true);
+      if (!connected) {
+        toast({
+          variant: "destructive",
+          title: "Connection Error",
+          description: "Could not connect to the database. Please check your network connection.",
+          duration: 3000,
+        });
+        setLoading(false);
+        return;
+      }
+      
       if (isResettingPassword) {
         const params = new URLSearchParams(location.hash.substring(1));
         const access_token = params.get('access_token');
@@ -186,7 +251,10 @@ const Auth = () => {
           throw error;
         }
 
-        console.log("Sign in successful:", data);
+        console.log("Sign in successful:", data?.user?.email);
+        
+        // Force a refresh of the client to ensure token is stored properly
+        await supabase.auth.refreshSession();
         
         toast({
           title: "Login successful",
@@ -199,7 +267,10 @@ const Auth = () => {
         console.log("Attempting to sign up with:", email);
         const { data, error } = await supabase.auth.signUp({ 
           email, 
-          password 
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth`
+          }
         });
 
         if (error) {
@@ -214,6 +285,9 @@ const Auth = () => {
           description: t("verifyEmail"),
           duration: 3000,
         });
+        
+        // Automatically switch to login view after signup
+        setIsLogin(true);
       }
     } catch (error: any) {
       console.error("Auth error:", error);
@@ -227,6 +301,17 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary" />
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 flex items-center justify-center px-4">
@@ -261,6 +346,16 @@ const Auth = () => {
           </p>
         </div>
 
+        {/* Display debug information in development */}
+        {process.env.NODE_ENV === 'development' && (
+          <Alert variant="outline" className="my-4 text-xs bg-gray-50">
+            <AlertDescription>
+              <p><strong>Debug:</strong> Connection status: {connectionError ? "Error" : "OK"}</p>
+              <p>Current mode: {isResettingPassword ? "Reset Password" : isForgotPassword ? "Forgot Password" : isLogin ? "Login" : "Signup"}</p>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <form onSubmit={handleAuth} className="space-y-6">
           {!isResettingPassword && (
             <div>
@@ -271,6 +366,7 @@ const Auth = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 required={!isResettingPassword}
                 disabled={loading}
+                className="focus:ring-2 focus:ring-primary"
               />
             </div>
           )}
@@ -284,17 +380,27 @@ const Auth = () => {
                 required
                 minLength={6}
                 disabled={loading}
+                className="focus:ring-2 focus:ring-primary"
               />
             </div>
           )}
-          <Button type="submit" className="w-full" disabled={loading || connectionError}>
-            {loading 
-              ? t("loading") 
-              : isResettingPassword
-                ? "Update Password"
-                : isForgotPassword 
-                  ? t("sendResetLink")
-                  : isLogin ? t("login") : t("signup")}
+          <Button 
+            type="submit" 
+            className="w-full relative" 
+            disabled={loading || connectionError}
+          >
+            {loading && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin absolute left-4" />
+            )}
+            <span>
+              {loading 
+                ? t("loading") 
+                : isResettingPassword
+                  ? "Update Password"
+                  : isForgotPassword 
+                    ? t("sendResetLink")
+                    : isLogin ? t("login") : t("signup")}
+            </span>
           </Button>
         </form>
 
