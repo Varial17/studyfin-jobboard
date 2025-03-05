@@ -6,6 +6,8 @@ import { useToast } from "@/components/ui/use-toast";
 
 type UserProfile = {
   role?: string;
+  subscription_status?: string;
+  subscription_id?: string;
   [key: string]: any;
 };
 

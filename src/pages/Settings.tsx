@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -8,8 +8,10 @@ import { Navbar } from "@/components/Navbar";
 import { ProfileSidebar } from "@/components/ProfileSidebar";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { Save } from "lucide-react";
+import { Save, CreditCard } from "lucide-react";
 import { RoleSelectionSection } from "@/components/profile/RoleSelectionSection";
+import { StripeService } from "@/services/StripeService";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 const Settings = () => {
   const { user, profile, refreshProfile } = useAuth();
@@ -17,20 +19,40 @@ const Settings = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [isManagingSubscription, setIsManagingSubscription] = useState(false);
   const [profileData, setProfileData] = useState({
     role: profile?.role || "applicant",
+    subscription_status: profile?.subscription_status || null,
+    subscription_id: profile?.subscription_id || null,
   });
+
+  useEffect(() => {
+    if (profile) {
+      setProfileData({
+        role: profile.role || "applicant",
+        subscription_status: profile.subscription_status || null,
+        subscription_id: profile.subscription_id || null,
+      });
+    }
+  }, [profile]);
 
   const handleSave = async () => {
     if (!user) return;
 
     setSaving(true);
     try {
+      // Only save the role if they're downgrading to applicant or if they have an active subscription
+      const canChangeToEmployer = 
+        profileData.role === "applicant" || 
+        profile?.subscription_status === "active";
+      
+      const dataToUpdate = {
+        role: canChangeToEmployer ? profileData.role : "applicant",
+      };
+
       const { error } = await supabase
         .from("profiles")
-        .update({
-          role: profileData.role,
-        })
+        .update(dataToUpdate)
         .eq("id", user.id);
 
       if (error) throw error;
@@ -52,10 +74,20 @@ const Settings = () => {
     }
   };
 
+  const handleManageSubscription = async () => {
+    // Implementation for subscription management portal would go here
+    toast({
+      title: "Coming Soon",
+      description: "Subscription management will be available soon.",
+    });
+  };
+
   if (!user) {
     navigate("/auth");
     return null;
   }
+
+  const hasSubscription = profileData.subscription_status === "active";
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
@@ -75,6 +107,31 @@ const Settings = () => {
               </div>
               
               <div className="p-6 space-y-6">
+                {hasSubscription && (
+                  <Card className="border-green-200 bg-green-50 dark:bg-green-900/20">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
+                        <CreditCard className="h-5 w-5" />
+                        Active Subscription
+                      </CardTitle>
+                      <CardDescription className="text-green-600 dark:text-green-400">
+                        Your employer account is active and you can post jobs.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-2 border-green-300 text-green-700"
+                        onClick={handleManageSubscription}
+                        disabled={isManagingSubscription}
+                      >
+                        {isManagingSubscription ? "Loading..." : "Manage Subscription"}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+                
                 <RoleSelectionSection 
                   profile={profileData} 
                   setProfile={setProfileData} 
