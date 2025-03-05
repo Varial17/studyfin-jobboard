@@ -43,11 +43,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchProfile = async (userId: string) => {
     try {
       console.log("Fetching profile for user:", userId);
+      
+      // Check connection first
+      const connected = await checkSupabaseConnection();
+      if (!connected) {
+        console.error("Connection error in fetchProfile");
+        setConnectionError(true);
+        return null;
+      }
+      
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error("Error fetching profile:", error);
@@ -85,7 +94,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setLoading(true);
     console.log("Retrying connection...");
     
-    const connected = await checkSupabaseConnection(true);
+    const connected = await resetConnectionAndRetry();
     
     console.log("Connection retry result:", connected ? "Connected" : "Failed");
     
@@ -94,6 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       toast({
         title: "Connection restored",
         description: "Successfully reconnected to the database.",
+        duration: 3000,
       });
       await initializeAuth();
     } else {
@@ -102,6 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         variant: "destructive",
         title: "Connection failed",
         description: "Could not connect to the database. Please check your network connection.",
+        duration: 3000,
       });
     }
     setLoading(false);
@@ -130,6 +141,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           variant: "destructive",
           title: "Authentication error",
           description: "There was a problem connecting to the authentication service. Please try refreshing.",
+          duration: 3000,
         });
         setLoading(false);
         return;

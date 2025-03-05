@@ -16,6 +16,11 @@ export const supabase = createClient<Database>(
       storageKey: 'studyfin-auth-key',
       detectSessionInUrl: true,
     },
+    global: {
+      headers: {
+        'X-Client-Info': 'studyfin-web-app',
+      },
+    },
   }
 );
 
@@ -44,14 +49,41 @@ export const checkSupabaseConnection = async (forceCheck = false) => {
     console.log("Testing Supabase connection...");
     connectionStatus.lastChecked = now;
     
+    // First check if we have a valid session
+    const { data: sessionData } = await supabase.auth.getSession();
+    
     // Use a very lightweight request to test connection
     const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
     
     if (error) {
       console.error("Supabase connection test failed:", error);
-      connectionStatus.isConnected = false;
-      connectionStatus.lastError = error;
-      return false;
+      
+      // Check if this is an auth error, which might indicate we need to refresh the token
+      if (error.code === '401' && sessionData.session) {
+        console.log("Auth error detected, attempting to refresh session...");
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (refreshError) {
+          console.error("Failed to refresh session:", refreshError);
+          connectionStatus.isConnected = false;
+          connectionStatus.lastError = error;
+          return false;
+        }
+        
+        console.log("Session refreshed, retrying connection test...");
+        const { error: retryError } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
+        
+        if (retryError) {
+          console.error("Connection test failed after session refresh:", retryError);
+          connectionStatus.isConnected = false;
+          connectionStatus.lastError = retryError;
+          return false;
+        }
+      } else {
+        connectionStatus.isConnected = false;
+        connectionStatus.lastError = error;
+        return false;
+      }
     }
     
     console.log("Supabase connection test successful");
@@ -71,7 +103,7 @@ export const checkSupabaseConnection = async (forceCheck = false) => {
 export const resetConnectionAndRetry = async () => {
   console.log("Resetting connection status and retrying...");
   connectionStatus = {
-    lastChecked: null,
+    lastChecked: 0,
     isConnected: false,
     lastError: null,
     retryCount: 0,

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { AlertCircle } from "lucide-react";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -18,7 +20,7 @@ const Auth = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, connectionError, retryConnection } = useAuth();
 
   useEffect(() => {
     if (user) {
@@ -68,7 +70,7 @@ const Auth = () => {
         variant: "destructive",
         title: t("error"),
         description: errorMsg,
-        duration: 6000,
+        duration: 5000,
       });
       setIsLogin(true);
       setIsForgotPassword(false);
@@ -106,7 +108,7 @@ const Auth = () => {
             variant: "destructive",
             title: t("error"),
             description: "The password reset link is invalid or has expired. Please request a new one.",
-            duration: 6000,
+            duration: 5000,
           });
           setIsLogin(true);
           setIsForgotPassword(false);
@@ -146,7 +148,7 @@ const Auth = () => {
         toast({
           title: t("success"),
           description: "Password updated successfully. Please login with your new password.",
-          duration: 5000,
+          duration: 3000,
         });
         
         setIsResettingPassword(false);
@@ -169,7 +171,7 @@ const Auth = () => {
         toast({
           title: t("checkEmail"),
           description: "If an account exists with this email, you will receive a password reset link. Please check your spam folder if you don't see it.",
-          duration: 6000,
+          duration: 5000,
         });
         setIsForgotPassword(false);
       } else if (isLogin) {
@@ -186,16 +188,6 @@ const Auth = () => {
 
         console.log("Sign in successful:", data);
         
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("full_name, title")
-          .eq("id", data.user?.id)
-          .single();
-
-        if (profileError) {
-          console.warn("Error fetching profile:", profileError);
-        }
-
         toast({
           title: "Login successful",
           description: "You have been successfully logged in.",
@@ -220,6 +212,7 @@ const Auth = () => {
         toast({
           title: t("signupSuccess"),
           description: t("verifyEmail"),
+          duration: 3000,
         });
       }
     } catch (error: any) {
@@ -228,7 +221,7 @@ const Auth = () => {
         variant: "destructive",
         title: t("error"),
         description: error.message || "An unexpected error occurred",
-        duration: 6000,
+        duration: 5000,
       });
     } finally {
       setLoading(false);
@@ -237,6 +230,19 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 flex items-center justify-center px-4">
+      {connectionError && (
+        <div className="absolute top-0 left-0 right-0 bg-red-500 text-white p-2 text-center flex items-center justify-center space-x-2">
+          <AlertCircle className="h-4 w-4" />
+          <span>Connection issues detected. Authentication may not work properly.</span>
+          <button 
+            className="px-3 py-1 bg-white text-red-600 rounded-md hover:bg-gray-100 text-sm font-medium"
+            onClick={retryConnection}
+          >
+            Retry Connection
+          </button>
+        </div>
+      )}
+      
       <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-lg shadow-lg">
         <div className="text-center">
           <h2 className="text-3xl font-bold">
@@ -264,6 +270,7 @@ const Auth = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required={!isResettingPassword}
+                disabled={loading}
               />
             </div>
           )}
@@ -276,10 +283,11 @@ const Auth = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
+                disabled={loading}
               />
             </div>
           )}
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading || connectionError}>
             {loading 
               ? t("loading") 
               : isResettingPassword
@@ -291,13 +299,14 @@ const Auth = () => {
         </form>
 
         <div className="text-center space-y-2">
-          {!isResettingPassword && (
+          {!isResettingPassword && !connectionError && (
             <>
               {isLogin && !isForgotPassword && (
                 <Button
                   variant="link"
                   onClick={() => setIsForgotPassword(true)}
                   className="text-primary"
+                  disabled={loading}
                 >
                   {t("forgotPasswordLink")}
                 </Button>
@@ -307,6 +316,7 @@ const Auth = () => {
                   variant="link"
                   onClick={() => setIsForgotPassword(false)}
                   className="text-primary"
+                  disabled={loading}
                 >
                   {t("backToLogin")}
                 </Button>
@@ -318,6 +328,7 @@ const Auth = () => {
                   setIsForgotPassword(false);
                 }}
                 className="text-primary block w-full"
+                disabled={loading}
               >
                 {isLogin ? t("needAccount") : t("alreadyHaveAccount")}
               </Button>
