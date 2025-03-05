@@ -179,18 +179,35 @@ const Auth = () => {
         });
         setIsForgotPassword(false);
       } else if (isLogin) {
-        const { data: { user }, error } = await supabase.auth.signInWithPassword({ 
+        console.log("Attempting to sign in with:", email);
+        const { data, error } = await supabase.auth.signInWithPassword({ 
           email, 
           password 
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Sign in error:", error);
+          throw error;
+        }
 
-        const { data: profile } = await supabase
+        console.log("Sign in successful:", data);
+        
+        // Check if profile exists
+        const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("full_name, title")
-          .eq("id", user?.id)
+          .eq("id", data.user?.id)
           .single();
+
+        if (profileError) {
+          console.warn("Error fetching profile:", profileError);
+        }
+
+        toast({
+          title: "Login successful",
+          description: "You have been successfully logged in.",
+          duration: 3000,
+        });
 
         navigate("/profile");
         
@@ -202,9 +219,18 @@ const Auth = () => {
           });
         }
       } else {
-        const { error } = await supabase.auth.signUp({ email, password });
+        console.log("Attempting to sign up with:", email);
+        const { data, error } = await supabase.auth.signUp({ 
+          email, 
+          password 
+        });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Sign up error:", error);
+          throw error;
+        }
+
+        console.log("Sign up result:", data);
 
         toast({
           title: t("signupSuccess"),
