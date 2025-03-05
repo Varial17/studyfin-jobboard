@@ -118,7 +118,7 @@ export const translations = {
     locations: "50+ Locations",
     search: "Search for jobs, companies, or keywords",
     searchJobs: "Search Jobs",
-    findDreamJob: "Kickstart your journey to success!", // Updated text
+    findDreamJob: "Find Your Dream Job",
     opportunities: "Connect with top employers and find opportunities worldwide.",
     featuredJobs: "Featured Jobs",
     viewAllJobs: "View All Jobs",
@@ -268,7 +268,7 @@ export const translations = {
     locations: "50多个地点",
     search: "搜索工作、公司或关键词",
     searchJobs: "搜索工作",
-    findDreamJob: "启航你的梦想职业生涯", // Updated text
+    findDreamJob: "找到您的理想工作",
     opportunities: "与顶级雇主联系并在全球范围内寻找机会。",
     featuredJobs: "特色工作",
     viewAllJobs: "查看所有工作",

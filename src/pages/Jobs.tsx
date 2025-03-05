@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Search, MapPin, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -11,14 +11,12 @@ import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
-import { useToast } from "@/components/ui/use-toast";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 
 const Jobs = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useLanguage();
-  const { toast } = useToast();
   const [filters, setFilters] = useState({
     location: "",
     salary: "",
@@ -29,74 +27,31 @@ const Jobs = () => {
   const searchQuery = searchParams.get("q") || "";
   const locationFilter = filters.location;
 
-  const { data: jobs = [], isLoading, error } = useQuery({
+  const { data: jobs = [], isLoading } = useQuery({
     queryKey: ["jobs", searchQuery, locationFilter],
     queryFn: async () => {
-      console.log("Fetching jobs with query:", searchQuery, "location:", locationFilter);
-      
-      try {
-        // Start with the base query
-        let query = supabase
-          .from("jobs")
-          .select("*")
-          .order("created_at", { ascending: false });
+      let query = supabase
+        .from("jobs")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-        // Add filters if provided
-        if (searchQuery) {
-          query = query.ilike("title", `%${searchQuery}%`);
-        }
+      if (searchQuery) {
+        query = query.ilike("title", `%${searchQuery}%`);
+      }
 
-        if (locationFilter) {
-          query = query.ilike("location", `%${locationFilter}%`);
-        }
+      if (locationFilter) {
+        query = query.ilike("location", `%${locationFilter}%`);
+      }
 
-        // Execute the query
-        const { data, error } = await query;
-        
-        // Log the results for debugging
-        if (error) {
-          console.error("Error fetching jobs:", error);
-          throw error;
-        }
-        
-        console.log("Jobs fetched:", data ? data.length : 0);
-        if (data && data.length > 0) {
-          console.log("First job:", data[0]);
-        } else {
-          console.log("No jobs found");
-        }
-        
-        return data || [];
-      } catch (error: any) {
-        console.error("Error in job fetch function:", error);
-        toast({
-          variant: "destructive",
-          title: t("error"),
-          description: `Error loading jobs: ${error.message}`,
-        });
+      const { data, error } = await query;
+
+      if (error) {
         throw error;
       }
+
+      return data || [];
     },
-    refetchOnWindowFocus: false,
-    retry: 1,
   });
-
-  // If there's an error, display it
-  useEffect(() => {
-    if (error) {
-      console.error("Error in jobs component:", error);
-      toast({
-        variant: "destructive",
-        title: t("error"),
-        description: "Failed to load jobs. Please try again.",
-      });
-    }
-  }, [error, toast, t]);
-
-  // Debug the jobs data
-  useEffect(() => {
-    console.log("Current jobs data:", jobs);
-  }, [jobs]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -133,12 +88,7 @@ const Jobs = () => {
                 onChange={(e) => setFilters({ ...filters, location: e.target.value })}
               />
             </div>
-            <Button 
-              className="w-full md:w-auto bg-primary hover:bg-primary/90"
-              onClick={() => {
-                console.log("Search button clicked with filters:", { searchQuery, locationFilter });
-              }}
-            >
+            <Button className="w-full md:w-auto bg-primary hover:bg-primary/90">
               Search Jobs
             </Button>
           </div>
@@ -166,17 +116,8 @@ const Jobs = () => {
 
             {isLoading ? (
               <div className="text-center py-8">Loading jobs...</div>
-            ) : error ? (
-              <div className="text-center py-8 text-red-500">
-                Error loading jobs. Please try again later.
-              </div>
             ) : jobs.length === 0 ? (
-              <div className="text-center py-8 bg-white rounded-lg shadow-sm p-6">
-                <p className="text-gray-500 mb-2">No jobs found</p>
-                <p className="text-sm text-gray-400">
-                  Try changing your search criteria or check back later for new listings.
-                </p>
-              </div>
+              <div className="text-center py-8">No jobs found</div>
             ) : (
               jobs.map((job) => (
                 <Link
@@ -190,7 +131,7 @@ const Jobs = () => {
                       <p className="text-gray-600">{job.company}</p>
                     </div>
                     <span className="text-sm text-gray-500">
-                      {job.created_at ? new Date(job.created_at).toLocaleDateString() : "N/A"}
+                      {new Date(job.created_at!).toLocaleDateString()}
                     </span>
                   </div>
                   <div className="flex items-center text-gray-500 mb-4">
