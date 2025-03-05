@@ -13,15 +13,32 @@ import { ProfessionalInfoSection } from "@/components/profile/ProfessionalInfoSe
 import { Navbar } from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
 
+type ApplicantProfileData = {
+  full_name: string;
+  title: string;
+  bio: string;
+  location: string;
+  phone_number: string;
+  website: string;
+  university: string;
+  field_of_study: string;
+  graduation_year: string;
+  student_status: string;
+  cv_url: string;
+  github_url: string;
+  linkedin_url: string;
+  role: string;
+};
+
 const ApplicantProfile = () => {
   const { applicantId } = useParams();
-  const { user, profile } = useAuth();
+  const { user, profile: userProfile } = useAuth(); // Renamed to userProfile to avoid conflict
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [redirecting, setRedirecting] = useState(false);
-  const [profile, setProfile] = useState({
+  const [applicantProfile, setApplicantProfile] = useState<ApplicantProfileData>({ // Renamed to applicantProfile
     full_name: "",
     title: "",
     bio: "",
@@ -45,7 +62,7 @@ const ApplicantProfile = () => {
     }
 
     // Check if the user is an employer
-    const isEmployer = profile?.role === 'employer';
+    const isEmployer = userProfile?.role === 'employer'; // Updated to userProfile
     
     // If not an employer, redirect to settings after a short delay
     if (!isEmployer && !redirecting) {
@@ -75,8 +92,8 @@ const ApplicantProfile = () => {
         if (error) throw error;
         
         if (data) {
-          setProfile({
-            ...profile,
+          setApplicantProfile({ // Updated to setApplicantProfile
+            ...applicantProfile, // Updated to applicantProfile
             full_name: data.full_name || "",
             title: data.title || "",
             bio: data.bio || "",
@@ -108,7 +125,7 @@ const ApplicantProfile = () => {
     if (isEmployer) {
       fetchApplicantProfile();
     }
-  }, [user, applicantId, navigate, t, toast, profile?.role, redirecting]);
+  }, [user, applicantId, navigate, t, toast, userProfile?.role, redirecting, applicantProfile]); // Updated dependency array
 
   // Show loading or redirecting state
   if (loading && !redirecting) {
@@ -146,16 +163,16 @@ const ApplicantProfile = () => {
           <ProfileSidebar />
           <div className="flex-1 max-w-4xl space-y-6">
             <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold">{profile.full_name}</h1>
-              <Badge variant={profile.role === 'applicant' ? 'default' : 'secondary'}>
-                {profile.role === 'applicant' ? t('applicantRole') : t('employerRole')}
+              <h1 className="text-2xl font-bold">{applicantProfile.full_name}</h1>
+              <Badge variant={applicantProfile.role === 'applicant' ? 'default' : 'secondary'}>
+                {applicantProfile.role === 'applicant' ? t('applicantRole') : t('employerRole')}
               </Badge>
             </div>
-            <BasicInfoSection profile={profile} setProfile={() => {}} />
-            <ContactInfoSection profile={profile} setProfile={() => {}} userEmail={""} />
-            <EducationSection profile={profile} setProfile={() => {}} />
+            <BasicInfoSection profile={applicantProfile} setProfile={() => {}} />
+            <ContactInfoSection profile={applicantProfile} setProfile={() => {}} userEmail={""} />
+            <EducationSection profile={applicantProfile} setProfile={() => {}} />
             <ProfessionalInfoSection
-              profile={profile}
+              profile={applicantProfile}
               setProfile={() => {}}
               uploading={false}
               handleCVUpload={() => {}}
