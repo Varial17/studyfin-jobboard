@@ -29,9 +29,9 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
  */
 export const checkSupabaseConnection = async (silent: boolean = false): Promise<boolean> => {
   try {
-    // Use a simple health check instead of a table query
-    // This checks the connection without requiring specific table permissions
-    const { error } = await supabase.from('jobs').select('id').limit(1);
+    // Use the most basic health check possible
+    // Just check the REST API endpoint is available
+    const { data, error } = await supabase.rpc('ping');
     
     if (error) {
       if (!silent) {
@@ -74,13 +74,6 @@ export const resetConnectionAndRetry = async (): Promise<boolean> => {
       }
     } catch (e) {
       console.log("Error clearing local storage:", e);
-    }
-    
-    // Force reconnection by creating a temporary client
-    const tempClient = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-    const { error } = await tempClient.from('jobs').select('id').limit(1);
-    if (error) {
-      console.error("Failed to connect with temporary client:", error.message || error);
     }
     
     // Wait a moment before trying again with the main client
