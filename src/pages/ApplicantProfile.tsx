@@ -10,17 +10,17 @@ import { BasicInfoSection } from "@/components/profile/BasicInfoSection";
 import { ContactInfoSection } from "@/components/profile/ContactInfoSection";
 import { EducationSection } from "@/components/profile/EducationSection";
 import { ProfessionalInfoSection } from "@/components/profile/ProfessionalInfoSection";
-import { RoleSelectionSection } from "@/components/profile/RoleSelectionSection";
 import { Navbar } from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
 
 const ApplicantProfile = () => {
   const { applicantId } = useParams();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [redirecting, setRedirecting] = useState(false);
   const [profile, setProfile] = useState({
     full_name: "",
     title: "",
@@ -42,6 +42,26 @@ const ApplicantProfile = () => {
     if (!user) {
       navigate("/auth");
       return;
+    }
+
+    // Check if the user is an employer
+    const isEmployer = profile?.role === 'employer';
+    
+    // If not an employer, redirect to settings after a short delay
+    if (!isEmployer && !redirecting) {
+      setRedirecting(true);
+      toast({
+        title: t("access_denied"),
+        description: t("employer_role_required_view_applicant"),
+        variant: "destructive",
+      });
+      
+      // Short delay to allow toast to be seen before redirecting
+      const timeout = setTimeout(() => {
+        navigate("/profile/settings");
+      }, 2000);
+      
+      return () => clearTimeout(timeout);
     }
 
     const fetchApplicantProfile = async () => {
@@ -85,13 +105,35 @@ const ApplicantProfile = () => {
       }
     };
 
-    fetchApplicantProfile();
-  }, [user, applicantId, navigate, t, toast]);
+    if (isEmployer) {
+      fetchApplicantProfile();
+    }
+  }, [user, applicantId, navigate, t, toast, profile?.role, redirecting]);
 
-  if (loading) {
+  // Show loading or redirecting state
+  if (loading && !redirecting) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <span className="text-lg">{t("loading")}</span>
+      </div>
+    );
+  }
+  
+  if (redirecting) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex gap-6">
+            <ProfileSidebar />
+            <div className="flex-1 max-w-4xl space-y-6">
+              <h1 className="text-2xl font-bold mb-6">{t("applicantProfile")}</h1>
+              <div className="bg-white dark:bg-neutral-800 p-6 rounded-lg shadow">
+                <p className="text-center py-4">{t("redirecting_to_settings")}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

@@ -30,6 +30,7 @@ const PostJob = () => {
   const { t } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEmployer, setIsEmployer] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   const [formData, setFormData] = useState<JobFormData>({
     title: "",
@@ -43,15 +44,29 @@ const PostJob = () => {
   });
 
   useEffect(() => {
-    // Check if user is logged in and has employer role
     if (!user) {
       navigate("/auth");
       return;
     }
 
-    // Set isEmployer based on profile role
-    setIsEmployer(profile?.role === 'employer');
-  }, [user, profile, navigate]);
+    const hasEmployerRole = profile?.role === 'employer';
+    setIsEmployer(hasEmployerRole);
+    
+    if (!hasEmployerRole && !redirecting) {
+      setRedirecting(true);
+      toast({
+        title: t("access_denied"),
+        description: t("employer_role_required"),
+        variant: "destructive",
+      });
+      
+      const timeout = setTimeout(() => {
+        navigate("/profile/settings");
+      }, 2000);
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [user, profile, navigate, redirecting, toast, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,6 +119,31 @@ const PostJob = () => {
     }
   };
 
+  if (redirecting) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
+        <Navbar />
+        <div className="flex w-full">
+          <ProfileSidebar />
+          <main className="flex-1 px-4 py-8 md:px-8">
+            <div className="max-w-3xl mx-auto">
+              <h1 className="text-2xl font-semibold mb-6">{t("post_job")}</h1>
+              <div className="space-y-6">
+                <Alert variant="destructive" className="mb-6">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>{t("access_denied")}</AlertTitle>
+                  <AlertDescription>
+                    {t("redirecting_to_settings")}
+                  </AlertDescription>
+                </Alert>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
       <Navbar />
@@ -124,7 +164,7 @@ const PostJob = () => {
                 </Alert>
                 
                 <Button 
-                  onClick={() => navigate("/profile")}
+                  onClick={() => navigate("/profile/settings")}
                   className="w-full"
                 >
                   Go to Profile Settings

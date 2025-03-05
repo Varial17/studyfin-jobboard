@@ -90,10 +90,12 @@ export const translations = {
     employerRoleDesc: "Post job listings and manage applicants",
 
     // Access control translations
-    accessDenied: "Access Denied",
-    employerRoleRequired: "You need to be an employer to view this page",
-    applicantRoleRequired: "You need to be a job seeker to apply for jobs",
-    updateProfile: "Update Profile",
+    access_denied: "Access Denied",
+    employer_role_required: "You need an employer account to post jobs",
+    employer_role_required_view_applicant: "You need an employer account to view applicant profiles",
+    redirecting_to_settings: "Redirecting to profile settings...",
+    post_job: "Post Job",
+    applicantProfile: "Applicant Profile",
 
     // Index page translations
     findDreamJob: "Find Your Dream Job",
@@ -230,10 +232,12 @@ export const translations = {
     employerRoleDesc: "发布招聘信息并管理申请人",
 
     // Access control translations
-    accessDenied: "访问被拒绝",
-    employerRoleRequired: "您需要是雇主才能查看此页面",
-    applicantRoleRequired: "您需要是求职者才能申请工作",
-    updateProfile: "更新个人资料",
+    access_denied: "访问被拒绝",
+    employer_role_required: "您需要雇主账户才能发布职位",
+    employer_role_required_view_applicant: "您需要雇主账户才能查看申请人资料",
+    redirecting_to_settings: "正在重定向到个人资料设置...",
+    post_job: "发布职位",
+    applicantProfile: "申请人资料",
 
     // Index page translations
     findDreamJob: "找到您的理想工作",
