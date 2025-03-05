@@ -22,39 +22,55 @@ export const supabase = createClient<Database>(
     },
     global: {
       fetch: function customFetch(url: RequestInfo | URL, options?: RequestInit) {
-        // Log request before sending (useful for debugging)
-        console.log("Supabase fetch request:", url);
-        return fetch(url, options);
+        try {
+          // Enhanced logging for debugging connection issues
+          console.log("Supabase request to:", typeof url === 'string' ? url : url.toString());
+          return fetch(url, options);
+        } catch (error) {
+          console.error("Supabase fetch error:", error);
+          throw error;
+        }
       }
     },
   }
 );
 
-// Add some debug info to help troubleshoot
+// Add debug info to console
 console.log("Supabase client initialized with URL:", SUPABASE_URL);
 
 // Create a helper function to check Supabase connection
 export const checkSupabaseConnection = async () => {
   try {
     console.log("Testing Supabase connection...");
-    const { data, error } = await supabase.from('profiles').select('count()', { count: 'exact' }).limit(1);
-    if (error) {
-      console.error("Supabase connection test failed:", error);
+    
+    // First check if auth is working
+    const authResponse = await supabase.auth.getSession();
+    if (authResponse.error) {
+      console.error("Supabase auth connection test failed:", authResponse.error);
       return false;
     }
-    console.log("Supabase connection test successful, count:", data);
+    
+    // Then try a simple database query
+    const { data, error } = await supabase.from('profiles').select('count()', { count: 'exact' }).limit(1);
+    
+    if (error) {
+      console.error("Supabase database connection test failed:", error);
+      return false;
+    }
+    
+    console.log("Supabase connection test successful:", data);
     return true;
   } catch (error) {
-    console.error("Unexpected error testing Supabase connection:", error);
+    console.error("Critical Supabase connection error:", error);
     return false;
   }
 };
 
-// Test connection on init - run immediately to check connectivity
+// Run a connection test immediately
 checkSupabaseConnection().then(connected => {
   if (connected) {
     console.log("✅ Supabase is connected and working");
   } else {
-    console.error("❌ Could not connect to Supabase - check your network and credentials");
+    console.error("❌ Could not connect to Supabase - check credentials and network");
   }
 });

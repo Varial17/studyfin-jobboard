@@ -1,14 +1,14 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { Search, MapPin, Filter } from "lucide-react";
+import { Search, MapPin, Filter, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Navbar } from "@/components/Navbar";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, checkSupabaseConnection } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/components/ui/use-toast";
@@ -25,16 +25,39 @@ const Jobs = () => {
     experience: "",
     type: "",
   });
+  const [connectionStatus, setConnectionStatus] = useState<boolean | null>(null);
 
   const searchQuery = searchParams.get("q") || "";
   const locationFilter = filters.location;
 
-  const { data: jobs = [], isLoading, error } = useQuery({
+  useEffect(() => {
+    const verifyConnection = async () => {
+      const connected = await checkSupabaseConnection();
+      setConnectionStatus(connected);
+      
+      if (!connected) {
+        toast({
+          variant: "destructive",
+          title: "Connection Error",
+          description: "Could not connect to the database. Please check your network connection.",
+        });
+      }
+    };
+    
+    verifyConnection();
+  }, [toast]);
+
+  const { data: jobs = [], isLoading, error, refetch } = useQuery({
     queryKey: ["jobs", searchQuery, locationFilter],
     queryFn: async () => {
       console.log("Fetching jobs with query:", searchQuery, "location:", locationFilter);
       
       try {
+        // Check connection status before fetching
+        if (connectionStatus === false) {
+          await checkSupabaseConnection();
+        }
+        
         // Start with the base query
         let query = supabase
           .from("jobs")
@@ -78,20 +101,9 @@ const Jobs = () => {
       }
     },
     refetchOnWindowFocus: false,
-    retry: 1,
+    retry: 2,
+    enabled: connectionStatus !== false,
   });
-
-  // If there's an error, display it
-  useEffect(() => {
-    if (error) {
-      console.error("Error in jobs component:", error);
-      toast({
-        variant: "destructive",
-        title: t("error"),
-        description: "Failed to load jobs. Please try again.",
-      });
-    }
-  }, [error, toast, t]);
 
   // Debug the jobs data
   useEffect(() => {
@@ -102,6 +114,34 @@ const Jobs = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <div className="container mx-auto px-4 py-8">
+        {connectionStatus === false && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center">
+            <AlertTriangle className="h-5 w-5 mr-2" />
+            <div className="flex-1">
+              <p className="font-medium">Database connection error</p>
+              <p className="text-sm">We're having trouble connecting to our database. Jobs may not load properly.</p>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="ml-4 text-red-600 border-red-300"
+              onClick={async () => {
+                const connected = await checkSupabaseConnection();
+                setConnectionStatus(connected);
+                if (connected) {
+                  refetch();
+                  toast({
+                    title: "Connection restored",
+                    description: "Successfully reconnected to the database.",
+                  });
+                }
+              }}
+            >
+              Retry Connection
+            </Button>
+          </div>
+        )}
+        
         {/* Search Bar */}
         <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -137,6 +177,7 @@ const Jobs = () => {
               className="w-full md:w-auto bg-primary hover:bg-primary/90"
               onClick={() => {
                 console.log("Search button clicked with filters:", { searchQuery, locationFilter });
+                refetch();
               }}
             >
               Search Jobs
@@ -165,10 +206,24 @@ const Jobs = () => {
             </div>
 
             {isLoading ? (
-              <div className="text-center py-8">Loading jobs...</div>
+              <div className="text-center py-8 bg-white rounded-lg shadow-sm p-8">
+                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading jobs...</p>
+              </div>
             ) : error ? (
-              <div className="text-center py-8 text-red-500">
-                Error loading jobs. Please try again later.
+              <div className="text-center py-8 bg-white rounded-lg shadow-sm p-6">
+                <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                <p className="text-red-500 font-medium mb-2">Error loading jobs</p>
+                <p className="text-sm text-gray-500 mb-4">
+                  We encountered a problem connecting to our database.
+                </p>
+                <Button 
+                  variant="outline" 
+                  onClick={() => refetch()}
+                  className="mx-auto"
+                >
+                  Try Again
+                </Button>
               </div>
             ) : jobs.length === 0 ? (
               <div className="text-center py-8 bg-white rounded-lg shadow-sm p-6">

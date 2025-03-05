@@ -18,26 +18,32 @@ export const StripeService = {
         return { error: "You must be logged in to create a checkout session" };
       }
       
-      console.log("Invoking Supabase function: create-checkout-session");
-      const { data, error } = await supabase.functions.invoke("create-checkout-session", {
-        body: {
-          user_id: userId,
-          return_url: `${window.location.origin}/profile/settings`,
-        },
-      });
+      // Validate connection before calling function
+      try {
+        console.log("Invoking Supabase function: create-checkout-session");
+        const { data, error } = await supabase.functions.invoke("create-checkout-session", {
+          body: {
+            user_id: userId,
+            return_url: `${window.location.origin}/profile/settings`,
+          },
+        });
 
-      if (error) {
-        console.error("Error creating checkout session:", error);
-        return { error: error.message || "Failed to create checkout session" };
+        if (error) {
+          console.error("Error creating checkout session:", error);
+          return { error: error.message || "Failed to create checkout session" };
+        }
+
+        if (!data || !data.url) {
+          console.error("Invalid response from create-checkout-session function:", data);
+          return { error: "Failed to create checkout session: No URL returned" };
+        }
+
+        console.log("Checkout session created successfully, redirecting to:", data.url);
+        return { url: data.url };
+      } catch (functionError: any) {
+        console.error("Function invocation error:", functionError);
+        return { error: "Error connecting to payment service: " + (functionError.message || "Unknown error") };
       }
-
-      if (!data || !data.url) {
-        console.error("Invalid response from create-checkout-session function:", data);
-        return { error: "Failed to create checkout session: No URL returned" };
-      }
-
-      console.log("Checkout session created successfully, redirecting to:", data.url);
-      return { url: data.url };
     } catch (error: any) {
       console.error("Exception in createCheckoutSession:", error);
       return { error: error.message || "An unknown error occurred" };

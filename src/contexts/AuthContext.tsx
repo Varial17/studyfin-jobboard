@@ -73,70 +73,45 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    // Check active sessions and sets the user
-    console.log("Initializing auth context");
-    
     const initializeAuth = async () => {
+      console.log("Initializing auth context - checking session");
       try {
         setLoading(true);
-        // Get session
-        const { data, error } = await supabase.auth.getSession();
         
-        if (error) {
-          console.error("Error getting session:", error);
+        // Get session
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("Error getting session:", sessionError);
           toast({
             variant: "destructive",
             title: "Authentication error",
-            description: "There was a problem connecting to the authentication service.",
+            description: "There was a problem connecting to the authentication service. Please try refreshing.",
           });
           setLoading(false);
           return;
         }
 
-        // Debug URL info to help troubleshoot redirect issues
-        const urlDebug = {
-          hash: window.location.hash,
-          hash_params: {
-            accessToken: window.location.hash.includes("access_token") 
-              ? new URLSearchParams(window.location.hash.substring(1)).get("access_token")
-              : null,
-            tokenType: window.location.hash.includes("token_type")
-              ? new URLSearchParams(window.location.hash.substring(1)).get("token_type")
-              : null,
-            error: window.location.hash.includes("error")
-              ? new URLSearchParams(window.location.hash.substring(1)).get("error")
-              : null,
-            errorDescription: window.location.hash.includes("error_description")
-              ? new URLSearchParams(window.location.hash.substring(1)).get("error_description")
-              : null,
-          },
-          search: window.location.search,
-          search_params: {
-            token: new URLSearchParams(window.location.search).get("token"),
-            type: new URLSearchParams(window.location.search).get("type"),
-            emailFromUrl: new URLSearchParams(window.location.search).get("email"),
-            isResetMode: window.location.search.includes("type=recovery"),
-          },
-        };
-        console.log("URL Debug:", urlDebug);
-        
-        const currentSession = data?.session;
+        const currentSession = sessionData?.session;
         console.log("Auth session check:", currentSession ? "Active session found" : "No active session");
-        setSession(currentSession);
         
         if (currentSession?.user) {
+          console.log("User found in session:", currentSession.user.email);
           setUser(currentSession.user);
+          setSession(currentSession);
           
-          // Fetch profile
+          // Fetch profile for the user
           try {
             const profileData = await fetchProfile(currentSession.user.id);
             setProfile(profileData);
           } catch (profileError) {
             console.error("Error fetching initial profile:", profileError);
           }
+        } else {
+          console.log("No user in current session");
         }
       } catch (error) {
-        console.error("Error in auth initialization:", error);
+        console.error("Critical error in auth initialization:", error);
       } finally {
         setLoading(false);
       }
@@ -149,12 +124,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       async (event, newSession) => {
         console.log("Auth state changed:", event, newSession ? "session exists" : "no session");
         
-        setSession(newSession);
-        
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          if (newSession?.user) {
+        if (newSession) {
+          setSession(newSession);
+          
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
             console.log("User signed in or token refreshed:", newSession.user.email);
             setUser(newSession.user);
+            
             try {
               const profileData = await fetchProfile(newSession.user.id);
               setProfile(profileData);
@@ -163,10 +139,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
           }
         } else if (event === 'SIGNED_OUT') {
+          console.log("User signed out, clearing auth state");
           setUser(null);
           setProfile(null);
           setSession(null);
-          console.log("User signed out, cleared auth state");
         }
         
         setLoading(false);
