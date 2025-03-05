@@ -213,6 +213,7 @@ export type Database = {
           linkedin_url: string | null
           location: string | null
           phone_number: string | null
+          role: string | null
           student_status: string | null
           title: string | null
           university: string | null
@@ -232,6 +233,7 @@ export type Database = {
           linkedin_url?: string | null
           location?: string | null
           phone_number?: string | null
+          role?: string | null
           student_status?: string | null
           title?: string | null
           university?: string | null
@@ -251,6 +253,7 @@ export type Database = {
           linkedin_url?: string | null
           location?: string | null
           phone_number?: string | null
+          role?: string | null
           student_status?: string | null
           title?: string | null
           university?: string | null
