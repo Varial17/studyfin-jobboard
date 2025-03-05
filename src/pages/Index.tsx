@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, MapPin, Building2, Users, AlertTriangle } from "lucide-react";
@@ -11,14 +10,13 @@ import { motion } from "framer-motion";
 import { Globe } from "@/components/ui/globe";
 import { supabase, checkSupabaseConnection, resetConnectionAndRetry } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [connectionStatus, setConnectionStatus] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -31,13 +29,11 @@ const Index = () => {
         
         if (!connected) {
           console.log("Showing connection error toast");
-          setTimeout(() => {
-            toast({
-              variant: "destructive",
-              title: "Connection Error",
-              description: "Could not connect to the database. Please check your internet connection.",
-            });
-          }, 100);
+          toast({
+            variant: "destructive",
+            title: "Connection Error",
+            description: "Could not connect to the database. Please check your internet connection.",
+          });
         }
       } catch (error) {
         console.error("Error in verifyConnection:", error);
@@ -57,21 +53,17 @@ const Index = () => {
     if (connected) {
       console.log("Connection restored, refetching data");
       refetch();
-      setTimeout(() => {
-        toast({
-          title: "Connection restored",
-          description: "Successfully reconnected to the database.",
-        });
-      }, 100);
+      toast({
+        title: "Connection restored",
+        description: "Successfully reconnected to the database.",
+      });
     } else {
       console.log("Connection retry failed");
-      setTimeout(() => {
-        toast({
-          variant: "destructive",
-          title: "Connection failed",
-          description: "Could not connect to the database. Please try again later.",
-        });
-      }, 100);
+      toast({
+        variant: "destructive",
+        title: "Connection failed",
+        description: "Could not connect to the database. Please try again later.",
+      });
     }
   };
 
@@ -106,21 +98,19 @@ const Index = () => {
         throw new Error(err.message || "Failed to fetch jobs");
       }
     },
-    retry: 2,
+    retry: 1,
     retryDelay: 1000,
     enabled: connectionStatus !== false,
   });
 
   useEffect(() => {
-    if (error && !error.message.includes("connect to database")) {
+    if (error && !error.message?.includes("connect to database")) {
       console.error("Error loading featured jobs:", error);
-      setTimeout(() => {
-        toast({
-          variant: "destructive",
-          title: "Error loading jobs",
-          description: "Could not load featured jobs. Please try again later.",
-        });
-      }, 100);
+      toast({
+        variant: "destructive",
+        title: "Error loading jobs",
+        description: "Could not load featured jobs. Please try again later.",
+      });
     }
   }, [error]);
 

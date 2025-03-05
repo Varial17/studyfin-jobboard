@@ -6,9 +6,6 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://nluwegaxtjekbpccjuxt.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdXdlZ2F4dGpla2JwY2NqdXh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1NDQxMzEsImV4cCI6MjA1NjEyMDEzMX0.ZEE901-T8RfG8JVY5Q5umChmaZpmDM9BRpE3db8s5YQ";
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
-
 // Create a single supabase client for the entire app
 export const supabase = createClient<Database>(
   SUPABASE_URL, 
@@ -18,94 +15,12 @@ export const supabase = createClient<Database>(
       persistSession: true,
       autoRefreshToken: true,
       storageKey: 'studyfin-auth-key',
-      detectSessionInUrl: true, // Handle OAuth redirects properly
+      detectSessionInUrl: true,
     },
-    global: {
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      fetch: async (url: RequestInfo | URL, options?: RequestInit) => {
-        try {
-          // Enhanced logging for debugging connection issues
-          const urlStr = typeof url === 'string' ? url : url.toString();
-          console.info(`Supabase request to: ${urlStr}`);
-          
-          // Add additional headers for CORS troubleshooting
-          const enhancedOptions = {
-            ...options,
-            headers: {
-              ...options?.headers,
-              'X-Client-Info': 'studyfin-web-app'
-            }
-          };
-          
-          const response = await fetch(url, enhancedOptions);
-          
-          // Log 400/500 errors to help with debugging
-          if (!response.ok) {
-            console.error(`Supabase request failed: ${response.status} ${response.statusText}`, {
-              url: urlStr,
-              method: options?.method || 'GET',
-              status: response.status,
-              statusText: response.statusText
-            });
-            
-            // Try to get more details about the error
-            try {
-              const errorData = await response.clone().json();
-              console.error('Supabase error details:', errorData);
-              
-              // Check if this is an auth error
-              if (errorData.code === 'PGRST301' || response.status === 401) {
-                console.warn('Authentication error detected, may need to refresh session');
-                connectionStatus.isConnected = false;
-                connectionStatus.lastError = new Error(`Authentication error: ${errorData.message || response.statusText}`);
-              }
-
-              // Add specific handling for 400 errors
-              if (response.status === 400) {
-                console.error('Bad request (400) error details:', {
-                  error: errorData,
-                  request: {
-                    url: urlStr,
-                    method: options?.method
-                  }
-                });
-                connectionStatus.lastError = new Error(`Bad request: ${errorData.message || response.statusText}`);
-              }
-            } catch (e) {
-              // If we can't parse the error as JSON, just log the text
-              try {
-                const errorText = await response.clone().text();
-                console.error('Supabase error response:', errorText);
-              } catch (textError) {
-                console.error('Could not extract error text from response');
-              }
-            }
-          }
-          
-          return response;
-        } catch (error) {
-          console.error("Supabase network error:", error);
-          connectionStatus.isConnected = false;
-          connectionStatus.lastError = error instanceof Error ? error : new Error(String(error));
-          throw error;
-        }
-      }
-    },
-    realtime: {
-      params: {
-        eventsPerSecond: 10
-      }
-    }
   }
 );
 
-// Add debug info to console
-console.log("Supabase client initialized with URL:", SUPABASE_URL);
-console.log("Connecting to Supabase...");
-
-// Connection status tracker with retry mechanism
+// Simple connection status tracker
 let connectionStatus = {
   lastChecked: null as number | null,
   isConnected: false,
@@ -114,7 +29,7 @@ let connectionStatus = {
   maxRetries: 3
 };
 
-// Create a more robust helper function to check Supabase connection
+// Check Supabase connection
 export const checkSupabaseConnection = async (forceCheck = false) => {
   // If we checked recently and connection is good, use cached result
   const now = Date.now();
@@ -130,46 +45,14 @@ export const checkSupabaseConnection = async (forceCheck = false) => {
     console.log("Testing Supabase connection...");
     connectionStatus.lastChecked = now;
     
-    // First check if auth is working
-    console.log("Testing auth connection...");
-    const authResponse = await supabase.auth.getSession();
-    if (authResponse.error) {
-      console.error("Supabase auth connection test failed:", authResponse.error);
-      connectionStatus.isConnected = false;
-      connectionStatus.lastError = authResponse.error;
-      return false;
-    }
-    
-    console.log("Auth connection successful, testing database access...");
-    
-    // Then try to access the public schema with a lightweight query
+    // Try a lightweight query that doesn't require authentication
     const { data, error } = await supabase
       .from('profiles')
-      .select('count(*)', { count: 'exact', head: true })
+      .select('count', { count: 'exact', head: true })
       .limit(1);
     
     if (error) {
-      console.error("Supabase database connection test failed:", error);
-      
-      // Add detailed logging for specific error codes
-      if (error.code === '42501') {
-        console.error("Permission denied error. This may be an RLS policy issue.");
-      } else if (error.code === 'PGRST301') {
-        console.error("JWT authentication failed. Token may be invalid or expired.");
-      } else if (error.message.includes('network')) {
-        console.error("Network error detected. Check internet connection.");
-      }
-      
-      // Check if we should retry
-      if (connectionStatus.retryCount < connectionStatus.maxRetries) {
-        connectionStatus.retryCount++;
-        console.log(`Retrying connection (${connectionStatus.retryCount}/${connectionStatus.maxRetries})...`);
-        
-        // Wait 2 seconds before retry
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        return checkSupabaseConnection(true);
-      }
-      
+      console.error("Supabase connection test failed:", error);
       connectionStatus.isConnected = false;
       connectionStatus.lastError = error;
       return false;
@@ -182,17 +65,6 @@ export const checkSupabaseConnection = async (forceCheck = false) => {
     return true;
   } catch (error) {
     console.error("Critical Supabase connection error:", error);
-    
-    // Check if we should retry
-    if (connectionStatus.retryCount < connectionStatus.maxRetries) {
-      connectionStatus.retryCount++;
-      console.log(`Retrying connection after error (${connectionStatus.retryCount}/${connectionStatus.maxRetries})...`);
-      
-      // Wait 2 seconds before retry
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      return checkSupabaseConnection(true);
-    }
-    
     connectionStatus.isConnected = false;
     connectionStatus.lastError = error instanceof Error ? error : new Error(String(error));
     return false;
@@ -218,47 +90,18 @@ export const getConnectionStatus = () => {
   return connectionStatus;
 };
 
-// Run a connection test immediately
+// Run an initial connection test
 checkSupabaseConnection(true).then(connected => {
   if (connected) {
     console.log("✅ Supabase is connected and working");
   } else {
     console.error("❌ Could not connect to Supabase - check credentials and network");
-    console.error("Last error:", connectionStatus.lastError);
-    
-    // Add more diagnostic information to help troubleshoot
-    try {
-      if (typeof window !== 'undefined') {
-        console.log("Browser information:", navigator.userAgent);
-        console.log("Connection type:", (navigator as any).connection ? 
-          (navigator as any).connection.effectiveType : 'unknown');
-        
-        // Check for possible CORS issues
-        const isCrossOrigin = 
-          window.location.origin !== SUPABASE_URL && 
-          !SUPABASE_URL.includes('localhost');
-        
-        if (isCrossOrigin) {
-          console.warn("Possible CORS issue: App and Supabase on different origins");
-        }
-      }
-    } catch (error) {
-      console.error("Error gathering diagnostic info:", error);
-    }
   }
 });
 
-// Create a helper function to handle consistent Supabase error reporting
+// Error handler helper
 export const handleSupabaseError = (error: any, context: string = 'operation') => {
   console.error(`Supabase error in ${context}:`, error);
-  
-  // Mark connection as failed if this appears to be a connection issue
-  if (error.message?.includes('Failed to fetch') || 
-      error.code === 'PGRST301' ||
-      error.message?.includes('NetworkError')) {
-    connectionStatus.isConnected = false;
-    connectionStatus.lastError = error;
-  }
   
   return {
     message: error.message || 'An unknown error occurred',

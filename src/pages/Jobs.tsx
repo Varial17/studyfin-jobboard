@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Search, MapPin, Filter, AlertTriangle } from "lucide-react";
@@ -11,7 +10,7 @@ import { Navbar } from "@/components/Navbar";
 import { supabase, checkSupabaseConnection, resetConnectionAndRetry } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
@@ -19,7 +18,6 @@ type Job = Database["public"]["Tables"]["jobs"]["Row"];
 const Jobs = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useLanguage();
-  const { toast } = useToast();
   const [filters, setFilters] = useState({
     location: "",
     salary: "",
@@ -41,13 +39,11 @@ const Jobs = () => {
         
         if (!connected) {
           console.log("Showing connection error toast");
-          setTimeout(() => {
-            toast({
-              variant: "destructive",
-              title: "Connection Error",
-              description: "Could not connect to the database. Please check your network connection.",
-            });
-          }, 100);
+          toast({
+            variant: "destructive",
+            title: "Connection Error",
+            description: "Could not connect to the database. Please check your network connection.",
+          });
         }
       } catch (error) {
         console.error("Error in verifyConnection:", error);
@@ -67,21 +63,17 @@ const Jobs = () => {
     if (connected) {
       console.log("Connection restored, refetching data");
       refetch();
-      setTimeout(() => {
-        toast({
-          title: "Connection restored",
-          description: "Successfully reconnected to the database.",
-        });
-      }, 100);
+      toast({
+        title: "Connection restored",
+        description: "Successfully reconnected to the database.",
+      });
     } else {
       console.log("Connection retry failed");
-      setTimeout(() => {
-        toast({
-          variant: "destructive",
-          title: "Connection failed",
-          description: "Could not connect to the database. Please try again later.",
-        });
-      }, 100);
+      toast({
+        variant: "destructive",
+        title: "Connection failed",
+        description: "Could not connect to the database. Please try again later.",
+      });
     }
   };
 
@@ -91,7 +83,6 @@ const Jobs = () => {
       console.log("Fetching jobs with query:", searchQuery, "location:", locationFilter);
       
       try {
-        // Check connection status before fetching
         if (connectionStatus === false) {
           const connected = await checkSupabaseConnection(true);
           if (!connected) {
@@ -99,13 +90,11 @@ const Jobs = () => {
           }
         }
         
-        // Start with the base query
         let query = supabase
           .from("jobs")
           .select("*")
           .order("created_at", { ascending: false });
 
-        // Add filters if provided
         if (searchQuery) {
           query = query.ilike("title", `%${searchQuery}%`);
         }
@@ -114,10 +103,8 @@ const Jobs = () => {
           query = query.ilike("location", `%${locationFilter}%`);
         }
 
-        // Execute the query
         const { data, error } = await query;
         
-        // Log the results for debugging
         if (error) {
           console.error("Error fetching jobs:", error);
           throw error;
@@ -127,21 +114,18 @@ const Jobs = () => {
         return data || [];
       } catch (error: any) {
         console.error("Error in job fetch function:", error);
-        // Only show toast if it's not a connection error (that's handled separately)
         if (!error.message.includes("connect to database")) {
-          setTimeout(() => {
-            toast({
-              variant: "destructive",
-              title: t("error"),
-              description: `Error loading jobs: ${error.message}`,
-            });
-          }, 100);
+          toast({
+            variant: "destructive",
+            title: t("error"),
+            description: `Error loading jobs: ${error.message}`,
+          });
         }
         throw error;
       }
     },
-    refetchOnWindowFocus: false,
-    retry: 2,
+    retry: 1,
+    retryDelay: 1000,
     enabled: connectionStatus !== false,
   });
 
@@ -167,7 +151,6 @@ const Jobs = () => {
           </Alert>
         )}
         
-        {/* Search Bar */}
         <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-center px-3 bg-gray-50 rounded-md">
@@ -211,17 +194,14 @@ const Jobs = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Filters Sidebar */}
           <div className="bg-white p-4 rounded-lg shadow-sm h-fit">
             <div className="flex items-center gap-2 mb-4">
               <Filter className="w-5 h-5" />
               <h2 className="font-semibold">Filters</h2>
             </div>
             <Separator className="mb-4" />
-            {/* Add filter sections here */}
           </div>
 
-          {/* Job Listings */}
           <div className="lg:col-span-3 space-y-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">{jobs.length} Jobs</h2>
