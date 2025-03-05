@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,7 +12,6 @@ import { BasicInfoSection } from "@/components/profile/BasicInfoSection";
 import { ContactInfoSection } from "@/components/profile/ContactInfoSection";
 import { EducationSection } from "@/components/profile/EducationSection";
 import { ProfessionalInfoSection } from "@/components/profile/ProfessionalInfoSection";
-import { RoleSelectionSection } from "@/components/profile/RoleSelectionSection";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -37,7 +35,6 @@ const Profile = () => {
     cv_url: "",
     github_url: "",
     linkedin_url: "",
-    role: "applicant",
   });
 
   useEffect(() => {
@@ -71,7 +68,6 @@ const Profile = () => {
             cv_url: data.cv_url || "",
             github_url: data.github_url || "",
             linkedin_url: data.linkedin_url || "",
-            role: data.role || "applicant",
           });
         }
       } catch (error: any) {
@@ -173,7 +169,6 @@ const Profile = () => {
         <div className="flex gap-6">
           <ProfileSidebar />
           <div className="flex-1 max-w-4xl space-y-6">
-            <RoleSelectionSection profile={profile} setProfile={setProfile} />
             <BasicInfoSection profile={profile} setProfile={setProfile} />
             <ContactInfoSection
               profile={profile}
