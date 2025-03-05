@@ -21,10 +21,10 @@ export const supabase = createClient<Database>(
       detectSessionInUrl: true, // Handle OAuth redirects properly
     },
     global: {
-      fetch: function customFetch(...args) {
+      fetch: function customFetch(url: RequestInfo | URL, options?: RequestInit) {
         // Log request before sending (useful for debugging)
-        console.log("Supabase fetch request:", args[0]);
-        return fetch(...args);
+        console.log("Supabase fetch request:", url);
+        return fetch(url, options);
       }
     },
   }
