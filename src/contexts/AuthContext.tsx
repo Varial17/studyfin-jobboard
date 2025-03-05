@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase, checkSupabaseConnection, resetConnectionAndRetry } from "@/integrations/supabase/client";
@@ -44,14 +43,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       console.log("Fetching profile for user:", userId);
       
-      // Check connection first
-      const connected = await checkSupabaseConnection();
-      if (!connected) {
-        console.error("Connection error in fetchProfile");
+      // Check connection first using jobs table instead of profiles
+      const { data: jobsCheck, error: jobsError } = await supabase
+        .from("jobs")
+        .select("count(*)", { count: 'exact', head: true })
+        .limit(1);
+        
+      if (jobsError) {
+        console.error("Connection check error:", jobsError);
         setConnectionError(true);
         return null;
       }
       
+      // Now fetch the profile
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
@@ -123,9 +127,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       setLoading(true);
       
-      // Check connection first
-      const connected = await checkSupabaseConnection();
-      if (!connected) {
+      // Check connection first with jobs table
+      const { data: jobsCheck, error: jobsError } = await supabase
+        .from("jobs")
+        .select("count(*)", { count: 'exact', head: true })
+        .limit(1);
+        
+      if (jobsError) {
+        console.error("Connection check error:", jobsError);
         setConnectionError(true);
         setLoading(false);
         return;

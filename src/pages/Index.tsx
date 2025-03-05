@@ -72,12 +72,15 @@ const Index = () => {
     queryFn: async () => {
       console.log("Fetching featured jobs");
       try {
-        if (connectionStatus === false) {
-          console.log("Testing connection before fetching jobs...");
-          const connected = await checkSupabaseConnection(true);
-          if (!connected) {
-            throw new Error("Cannot connect to database");
-          }
+        // Simple connection test first
+        const { data: connectionCheck, error: connectionError } = await supabase
+          .from('jobs')
+          .select('count(*)', { count: 'exact', head: true })
+          .limit(1);
+          
+        if (connectionError) {
+          console.error("Connection check failed:", connectionError);
+          throw new Error("Cannot connect to database");
         }
 
         const { data, error } = await supabase

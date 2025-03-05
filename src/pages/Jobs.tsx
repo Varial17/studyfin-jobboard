@@ -83,17 +83,18 @@ const Jobs = () => {
       console.log("Fetching jobs with query:", searchQuery, "location:", locationFilter);
       
       try {
-        // Check connection first to avoid cryptic errors
-        if (connectionStatus === false) {
-          const connected = await checkSupabaseConnection(true);
-          if (!connected) {
-            throw new Error("Cannot connect to database");
-          }
+        // Simple connection check first
+        const { data: connectionCheck, error: connectionError } = await supabase
+          .from('jobs')
+          .select('count(*)', { count: 'exact', head: true })
+          .limit(1);
+          
+        if (connectionError) {
+          console.error("Connection check failed:", connectionError);
+          throw new Error("Cannot connect to database");
         }
         
-        const session = await supabase.auth.getSession();
-        console.log("Current session check:", session?.data?.session ? "Active" : "None");
-        
+        // Proceed with the actual query
         let query = supabase
           .from("jobs")
           .select("*")
@@ -114,7 +115,7 @@ const Jobs = () => {
           throw error;
         }
         
-        console.log("Jobs fetched:", data ? data.length : 0);
+        console.log("Jobs fetched successfully:", data ? data.length : 0, "jobs");
         return data || [];
       } catch (error: any) {
         console.error("Error in job fetch function:", error);

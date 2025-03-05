@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase, checkSupabaseConnection } from "@/integrations/supabase/client";
@@ -24,14 +23,12 @@ const Auth = () => {
   const { t } = useLanguage();
   const { user, connectionError, retryConnection } = useAuth();
 
-  // Check for existing session and connection status on mount
   useEffect(() => {
     const checkSession = async () => {
       try {
         setInitialLoading(true);
         console.log("Auth page: checking connection and session");
         
-        // Check connection first
         const connected = await checkSupabaseConnection(true);
         if (!connected) {
           console.log("Auth page: connection check failed");
@@ -39,7 +36,6 @@ const Auth = () => {
           return;
         }
         
-        // Get current session
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -51,7 +47,6 @@ const Auth = () => {
         console.log("Auth page: session check result:", data.session ? "Active session" : "No session");
         
         if (data.session?.user) {
-          // Already logged in, redirect to profile
           console.log("Auth page: user is already logged in, redirecting to profile");
           navigate("/profile");
         }
@@ -65,7 +60,6 @@ const Auth = () => {
     checkSession();
   }, [navigate]);
 
-  // Redirect if user becomes authenticated
   useEffect(() => {
     if (user && !initialLoading) {
       console.log("Auth page: user detected in context, redirecting to profile");
@@ -73,7 +67,6 @@ const Auth = () => {
     }
   }, [user, navigate, initialLoading]);
 
-  // Process URL parameters for password reset
   useEffect(() => {
     const processUrlParams = async () => {
       const params = new URLSearchParams(location.hash.substring(1));
@@ -181,7 +174,6 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      // Check connection first
       const connected = await checkSupabaseConnection(true);
       if (!connected) {
         toast({
@@ -253,7 +245,6 @@ const Auth = () => {
 
         console.log("Sign in successful:", data?.user?.email);
         
-        // Force a refresh of the client to ensure token is stored properly
         await supabase.auth.refreshSession();
         
         toast({
@@ -286,7 +277,6 @@ const Auth = () => {
           duration: 3000,
         });
         
-        // Automatically switch to login view after signup
         setIsLogin(true);
       }
     } catch (error: any) {
@@ -346,9 +336,8 @@ const Auth = () => {
           </p>
         </div>
 
-        {/* Display debug information in development */}
         {process.env.NODE_ENV === 'development' && (
-          <Alert variant="outline" className="my-4 text-xs bg-gray-50">
+          <Alert variant="default" className="my-4 text-xs bg-gray-50">
             <AlertDescription>
               <p><strong>Debug:</strong> Connection status: {connectionError ? "Error" : "OK"}</p>
               <p>Current mode: {isResettingPassword ? "Reset Password" : isForgotPassword ? "Forgot Password" : isLogin ? "Login" : "Signup"}</p>

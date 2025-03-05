@@ -31,7 +31,7 @@ export const checkSupabaseConnection = async (silent: boolean = false): Promise<
   try {
     // Try to make a simple query to check connection
     const { data, error } = await supabase
-      .from('profiles')
+      .from('jobs')
       .select('count(*)', { count: 'exact', head: true })
       .limit(1);
     
@@ -59,15 +59,20 @@ export const resetConnectionAndRetry = async (): Promise<boolean> => {
   try {
     console.log("Attempting to reset Supabase connection...");
     
-    // Force a new session refresh
+    // Clear any cached auth session
+    await supabase.auth.signOut({ scope: 'local' });
+    
+    // Wait a moment before trying again
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Force session refresh
     const { data, error } = await supabase.auth.refreshSession();
     
     if (error) {
       console.error("Error refreshing session:", error.message);
-      return false;
     }
     
-    // Check if connection works after reset
+    // Check if jobs connection works after reset
     const connected = await checkSupabaseConnection();
     
     if (connected) {
