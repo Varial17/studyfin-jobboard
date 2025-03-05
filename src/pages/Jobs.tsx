@@ -11,12 +11,14 @@ import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
+import { useToast } from "@/components/ui/use-toast";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 
 const Jobs = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [filters, setFilters] = useState({
     location: "",
     salary: "",
@@ -27,14 +29,18 @@ const Jobs = () => {
   const searchQuery = searchParams.get("q") || "";
   const locationFilter = filters.location;
 
-  const { data: jobs = [], isLoading } = useQuery({
+  const { data: jobs = [], isLoading, error } = useQuery({
     queryKey: ["jobs", searchQuery, locationFilter],
     queryFn: async () => {
+      console.log("Fetching jobs with query:", searchQuery, "location:", locationFilter);
+      
+      // Start with the base query
       let query = supabase
         .from("jobs")
         .select("*")
         .order("created_at", { ascending: false });
 
+      // Add filters if provided
       if (searchQuery) {
         query = query.ilike("title", `%${searchQuery}%`);
       }
@@ -43,15 +49,31 @@ const Jobs = () => {
         query = query.ilike("location", `%${locationFilter}%`);
       }
 
+      // Execute the query
       const { data, error } = await query;
-
+      
+      // Log the results for debugging
       if (error) {
+        console.error("Error fetching jobs:", error);
+        toast({
+          variant: "destructive",
+          title: t("error"),
+          description: `Error loading jobs: ${error.message}`,
+        });
         throw error;
       }
-
+      
+      console.log("Jobs fetched:", data ? data.length : 0);
+      console.log("First job (if any):", data && data.length > 0 ? data[0] : "No jobs found");
+      
       return data || [];
     },
   });
+
+  // If there's an error, display it
+  if (error) {
+    console.error("Error in jobs component:", error);
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -116,8 +138,17 @@ const Jobs = () => {
 
             {isLoading ? (
               <div className="text-center py-8">Loading jobs...</div>
+            ) : error ? (
+              <div className="text-center py-8 text-red-500">
+                Error loading jobs. Please try again later.
+              </div>
             ) : jobs.length === 0 ? (
-              <div className="text-center py-8">No jobs found</div>
+              <div className="text-center py-8 bg-white rounded-lg shadow-sm p-6">
+                <p className="text-gray-500 mb-2">No jobs found</p>
+                <p className="text-sm text-gray-400">
+                  Try changing your search criteria or check back later for new listings.
+                </p>
+              </div>
             ) : (
               jobs.map((job) => (
                 <Link

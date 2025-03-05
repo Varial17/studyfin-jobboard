@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 type UserProfile = {
   role?: string;
@@ -26,9 +27,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   const fetchProfile = async (userId: string) => {
     try {
+      console.log("Fetching profile for user:", userId);
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
@@ -40,6 +43,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return null;
       }
       
+      console.log("Profile data received:", data);
       return data;
     } catch (error) {
       console.error("Error in fetchProfile:", error);
@@ -49,13 +53,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const refreshProfile = async () => {
     if (!user) return;
+    console.log("Refreshing profile for user:", user.id);
     const profileData = await fetchProfile(user.id);
     setProfile(profileData);
   };
 
   useEffect(() => {
     // Check active sessions and sets the user
+    console.log("Initializing auth context");
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log("Auth session check:", session ? "Active session" : "No session");
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       
@@ -69,6 +76,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Listen for changes on auth state (login, sign out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      console.log("Auth state changed:", _event);
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       

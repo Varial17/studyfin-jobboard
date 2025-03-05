@@ -19,6 +19,7 @@ const Index = () => {
   const { data: featuredJobs = [], isLoading } = useQuery({
     queryKey: ['featuredJobs'],
     queryFn: async () => {
+      console.log("Fetching featured jobs");
       const { data, error } = await supabase
         .from('jobs')
         .select('*')
@@ -31,6 +32,7 @@ const Index = () => {
         return [];
       }
 
+      console.log("Featured jobs count:", data?.length || 0);
       return data || [];
     },
   });
