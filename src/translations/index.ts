@@ -1,3 +1,4 @@
+
 export const translations = {
   en: {
     appName: "AI Recruiter",
@@ -94,6 +95,43 @@ export const translations = {
     employerRoleRequired: "You need to be an employer to view this page",
     applicantRoleRequired: "You need to be a job seeker to apply for jobs",
     updateProfile: "Update Profile",
+
+    // Index page translations
+    findDreamJob: "Find Your Dream Job",
+    opportunities: "Discover thousands of job opportunities with all the information you need.",
+    search: "Search jobs...",
+    searchJobs: "Search Jobs",
+    jobsPosted: "Jobs Posted",
+    locations: "Locations",
+    featuredJobs: "Featured Jobs",
+    viewAllJobs: "View All Jobs",
+
+    // Auth page translations
+    forgotPassword: "Forgot Password",
+    forgotPasswordDesc: "Enter your email and we'll send you a password reset link",
+    loginDescription: "Welcome back! Please enter your details",
+    signupDescription: "Create an account to get started",
+    sendResetLink: "Send Reset Link",
+    forgotPasswordLink: "Forgot password?",
+    backToLogin: "Back to login",
+    needAccount: "Don't have an account?",
+    alreadyHaveAccount: "Already have an account?",
+    checkEmail: "Check Your Email",
+    welcomeToStudyFin: "Welcome to AI Recruiter",
+    signupSuccess: "Signup Successful",
+    verifyEmail: "Please check your email to verify your account",
+
+    // Job application translations
+    coverLetter: "Cover Letter",
+    coverLetterPlaceholder: "Write a cover letter explaining why you're a good fit for this position...",
+    coverLetterRequired: "Cover letter is required",
+    applicationSubmitted: "Your application has been submitted successfully!",
+    submitting: "Submitting...",
+    submit: "Submit",
+    applyingFor: "Applying for",
+
+    // Navbar translations
+    language: "Language",
   },
   zh: {
     appName: "AI 招聘",
@@ -190,5 +228,42 @@ export const translations = {
     employerRoleRequired: "您需要是雇主才能查看此页面",
     applicantRoleRequired: "您需要是求职者才能申请工作",
     updateProfile: "更新个人资料",
+
+    // Index page translations
+    findDreamJob: "找到您的理想工作",
+    opportunities: "发现数千个就业机会，提供您所需的所有信息。",
+    search: "搜索工作...",
+    searchJobs: "搜索工作",
+    jobsPosted: "发布的职位",
+    locations: "地点",
+    featuredJobs: "精选职位",
+    viewAllJobs: "查看所有职位",
+
+    // Auth page translations
+    forgotPassword: "忘记密码",
+    forgotPasswordDesc: "输入您的电子邮件，我们将向您发送重置密码链接",
+    loginDescription: "欢迎回来！请输入您的详细信息",
+    signupDescription: "创建账户以开始使用",
+    sendResetLink: "发送重置链接",
+    forgotPasswordLink: "忘记密码？",
+    backToLogin: "返回登录",
+    needAccount: "没有账户？",
+    alreadyHaveAccount: "已有账户？",
+    checkEmail: "检查您的电子邮件",
+    welcomeToStudyFin: "欢迎来到 AI 招聘",
+    signupSuccess: "注册成功",
+    verifyEmail: "请检查您的电子邮件以验证您的账户",
+
+    // Job application translations
+    coverLetter: "求职信",
+    coverLetterPlaceholder: "写一封求职信，解释为什么您适合这个职位...",
+    coverLetterRequired: "求职信是必需的",
+    applicationSubmitted: "您的申请已成功提交！",
+    submitting: "提交中...",
+    submit: "提交",
+    applyingFor: "申请职位",
+
+    // Navbar translations
+    language: "语言",
   },
 };

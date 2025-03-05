@@ -39,12 +39,13 @@ const JobDetail = () => {
         try {
           const { data, error } = await supabase
             .from("profiles")
-            .select("role")
+            .select("*")
             .eq("id", user.id)
             .single();
 
           if (error) throw error;
-          setUserRole(data?.role || 'applicant');
+          // Handle case where role property might not exist yet
+          setUserRole((data as any).role || 'applicant');
         } catch (error) {
           console.error("Error fetching user role:", error);
         }

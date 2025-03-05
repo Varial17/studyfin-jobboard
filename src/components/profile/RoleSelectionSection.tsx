@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 
 interface RoleSelectionSectionProps {
   profile: {
-    role: string;
+    role?: string;
   };
   setProfile: (profile: any) => void;
 }

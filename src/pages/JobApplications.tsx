@@ -64,15 +64,17 @@ const JobApplications = () => {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("role")
+          .select("*")
           .eq("id", user.id)
           .single();
 
         if (error) throw error;
         
-        setUserRole(data?.role || null);
+        // Handle the case where role might not exist yet
+        const userRoleValue = (data as any).role || null;
+        setUserRole(userRoleValue);
 
-        if (data?.role !== 'employer') {
+        if (userRoleValue !== 'employer') {
           toast({
             variant: "destructive",
             title: t("accessDenied"),

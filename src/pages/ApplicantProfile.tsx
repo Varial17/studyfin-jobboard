@@ -70,7 +70,8 @@ const ApplicantProfile = () => {
             cv_url: data.cv_url || "",
             github_url: data.github_url || "",
             linkedin_url: data.linkedin_url || "",
-            role: data.role || "applicant",
+            // Handle the potential absence of role property
+            role: (data as any).role || "applicant",
           });
         }
       } catch (error: any) {
