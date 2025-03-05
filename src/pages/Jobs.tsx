@@ -8,10 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Navbar } from "@/components/Navbar";
-import { supabase, checkSupabaseConnection } from "@/integrations/supabase/client";
+import { supabase, checkSupabaseConnection, resetConnectionAndRetry } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/components/ui/use-toast";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 
@@ -32,20 +33,57 @@ const Jobs = () => {
 
   useEffect(() => {
     const verifyConnection = async () => {
-      const connected = await checkSupabaseConnection();
-      setConnectionStatus(connected);
-      
-      if (!connected) {
-        toast({
-          variant: "destructive",
-          title: "Connection Error",
-          description: "Could not connect to the database. Please check your network connection.",
-        });
+      try {
+        console.log("Verifying connection on Jobs page...");
+        const connected = await checkSupabaseConnection(true);
+        console.log("Connection verification result:", connected);
+        setConnectionStatus(connected);
+        
+        if (!connected) {
+          console.log("Showing connection error toast");
+          setTimeout(() => {
+            toast({
+              variant: "destructive",
+              title: "Connection Error",
+              description: "Could not connect to the database. Please check your network connection.",
+            });
+          }, 100);
+        }
+      } catch (error) {
+        console.error("Error in verifyConnection:", error);
+        setConnectionStatus(false);
       }
     };
     
     verifyConnection();
-  }, [toast]);
+  }, []);
+
+  const handleRetryConnection = async () => {
+    console.log("Manually retrying connection...");
+    await resetConnectionAndRetry();
+    const connected = await checkSupabaseConnection(true);
+    setConnectionStatus(connected);
+    
+    if (connected) {
+      console.log("Connection restored, refetching data");
+      refetch();
+      setTimeout(() => {
+        toast({
+          title: "Connection restored",
+          description: "Successfully reconnected to the database.",
+        });
+      }, 100);
+    } else {
+      console.log("Connection retry failed");
+      setTimeout(() => {
+        toast({
+          variant: "destructive",
+          title: "Connection failed",
+          description: "Could not connect to the database. Please try again later.",
+        });
+      }, 100);
+    }
+  };
 
   const { data: jobs = [], isLoading, error, refetch } = useQuery({
     queryKey: ["jobs", searchQuery, locationFilter],
@@ -55,7 +93,10 @@ const Jobs = () => {
       try {
         // Check connection status before fetching
         if (connectionStatus === false) {
-          await checkSupabaseConnection();
+          const connected = await checkSupabaseConnection(true);
+          if (!connected) {
+            throw new Error("Cannot connect to database");
+          }
         }
         
         // Start with the base query
@@ -83,20 +124,19 @@ const Jobs = () => {
         }
         
         console.log("Jobs fetched:", data ? data.length : 0);
-        if (data && data.length > 0) {
-          console.log("First job:", data[0]);
-        } else {
-          console.log("No jobs found");
-        }
-        
         return data || [];
       } catch (error: any) {
         console.error("Error in job fetch function:", error);
-        toast({
-          variant: "destructive",
-          title: t("error"),
-          description: `Error loading jobs: ${error.message}`,
-        });
+        // Only show toast if it's not a connection error (that's handled separately)
+        if (!error.message.includes("connect to database")) {
+          setTimeout(() => {
+            toast({
+              variant: "destructive",
+              title: t("error"),
+              description: `Error loading jobs: ${error.message}`,
+            });
+          }, 100);
+        }
         throw error;
       }
     },
@@ -105,41 +145,26 @@ const Jobs = () => {
     enabled: connectionStatus !== false,
   });
 
-  // Debug the jobs data
-  useEffect(() => {
-    console.log("Current jobs data:", jobs);
-  }, [jobs]);
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <div className="container mx-auto px-4 py-8">
         {connectionStatus === false && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center">
-            <AlertTriangle className="h-5 w-5 mr-2" />
-            <div className="flex-1">
-              <p className="font-medium">Database connection error</p>
-              <p className="text-sm">We're having trouble connecting to our database. Jobs may not load properly.</p>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="ml-4 text-red-600 border-red-300"
-              onClick={async () => {
-                const connected = await checkSupabaseConnection();
-                setConnectionStatus(connected);
-                if (connected) {
-                  refetch();
-                  toast({
-                    title: "Connection restored",
-                    description: "Successfully reconnected to the database.",
-                  });
-                }
-              }}
-            >
-              Retry Connection
-            </Button>
-          </div>
+          <Alert variant="destructive" className="mb-6">
+            <AlertTriangle className="h-5 w-5" />
+            <AlertTitle>Connection Error</AlertTitle>
+            <AlertDescription className="flex justify-between items-center">
+              <div>Could not connect to the database. Some features may not work properly.</div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="ml-4 bg-white text-red-600 border-red-300 hover:bg-gray-100"
+                onClick={handleRetryConnection}
+              >
+                Retry Connection
+              </Button>
+            </AlertDescription>
+          </Alert>
         )}
         
         {/* Search Bar */}

@@ -1,7 +1,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
-import { supabase, checkSupabaseConnection, getConnectionStatus } from "@/integrations/supabase/client";
+import { supabase, checkSupabaseConnection, getConnectionStatus, resetConnectionAndRetry } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { AlertCircle } from "lucide-react";
 
@@ -86,21 +86,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const retryConnection = async () => {
     setLoading(true);
-    const connected = await checkSupabaseConnection();
+    console.log("Retrying connection...");
+    
+    // First reset connection status and retry
+    await resetConnectionAndRetry();
+    
+    const connectionStatus = getConnectionStatus();
+    const connected = connectionStatus.isConnected;
+    
+    console.log("Connection retry result:", connected ? "Connected" : "Failed", connectionStatus);
+    
     if (connected) {
       setConnectionError(false);
-      toast({
-        title: "Connection restored",
-        description: "Successfully reconnected to the database.",
-      });
+      // Use a delay to ensure toast renders properly
+      setTimeout(() => {
+        toast({
+          title: "Connection restored",
+          description: "Successfully reconnected to the database.",
+        });
+      }, 100);
       await initializeAuth();
     } else {
       setConnectionError(true);
-      toast({
-        variant: "destructive",
-        title: "Connection failed",
-        description: "Could not connect to the database. Please check your network connection.",
-      });
+      // Use a delay to ensure toast renders properly
+      setTimeout(() => {
+        toast({
+          variant: "destructive",
+          title: "Connection failed",
+          description: "Could not connect to the database. Please check your network connection.",
+        });
+      }, 100);
     }
     setLoading(false);
   };
@@ -116,11 +131,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (sessionError) {
         console.error("Error getting session:", sessionError);
         setConnectionError(true);
-        toast({
-          variant: "destructive",
-          title: "Authentication error",
-          description: "There was a problem connecting to the authentication service. Please try refreshing.",
-        });
+        setTimeout(() => {
+          toast({
+            variant: "destructive",
+            title: "Authentication error",
+            description: "There was a problem connecting to the authentication service. Please try refreshing.",
+          });
+        }, 100);
         setLoading(false);
         return;
       }
@@ -154,21 +171,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Check connection status first
     const connectionStatus = getConnectionStatus();
+    console.log("Initial connection status:", connectionStatus);
+    
     if (connectionStatus.lastChecked && !connectionStatus.isConnected) {
       setConnectionError(true);
-      toast({
-        variant: "destructive",
-        title: "Connection Error",
-        description: "Could not connect to the database. Some features may not work properly.",
-        action: (
-          <button 
-            className="px-3 py-2 bg-white text-red-600 rounded-md hover:bg-gray-100"
-            onClick={retryConnection}
-          >
-            Retry
-          </button>
-        ),
-      });
+      setTimeout(() => {
+        toast({
+          variant: "destructive",
+          title: "Connection Error",
+          description: "Could not connect to the database. Some features may not work properly.",
+          action: (
+            <button 
+              className="px-3 py-2 bg-white text-red-600 rounded-md hover:bg-gray-100"
+              onClick={retryConnection}
+            >
+              Retry
+            </button>
+          ),
+        });
+      }, 100);
     }
 
     initializeAuth();
@@ -206,7 +227,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [toast]);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ 

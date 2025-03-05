@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Building2, Users } from "lucide-react";
+import { Search, MapPin, Building2, Users, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,9 +9,10 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
 import { Globe } from "@/components/ui/globe";
-import { supabase, checkSupabaseConnection } from "@/integrations/supabase/client";
+import { supabase, checkSupabaseConnection, resetConnectionAndRetry } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -21,29 +23,66 @@ const Index = () => {
 
   useEffect(() => {
     const verifyConnection = async () => {
-      const connected = await checkSupabaseConnection();
-      setConnectionStatus(connected);
-      
-      if (!connected) {
-        toast({
-          variant: "destructive",
-          title: "Connection Error",
-          description: "Could not connect to the database. Please check your internet connection.",
-        });
+      try {
+        console.log("Verifying connection on Index page...");
+        const connected = await checkSupabaseConnection(true);
+        console.log("Connection verification result:", connected);
+        setConnectionStatus(connected);
+        
+        if (!connected) {
+          console.log("Showing connection error toast");
+          setTimeout(() => {
+            toast({
+              variant: "destructive",
+              title: "Connection Error",
+              description: "Could not connect to the database. Please check your internet connection.",
+            });
+          }, 100);
+        }
+      } catch (error) {
+        console.error("Error in verifyConnection:", error);
+        setConnectionStatus(false);
       }
     };
     
     verifyConnection();
-  }, [toast]);
+  }, []);
+
+  const handleRetryConnection = async () => {
+    console.log("Manually retrying connection...");
+    await resetConnectionAndRetry();
+    const connected = await checkSupabaseConnection(true);
+    setConnectionStatus(connected);
+    
+    if (connected) {
+      console.log("Connection restored, refetching data");
+      refetch();
+      setTimeout(() => {
+        toast({
+          title: "Connection restored",
+          description: "Successfully reconnected to the database.",
+        });
+      }, 100);
+    } else {
+      console.log("Connection retry failed");
+      setTimeout(() => {
+        toast({
+          variant: "destructive",
+          title: "Connection failed",
+          description: "Could not connect to the database. Please try again later.",
+        });
+      }, 100);
+    }
+  };
 
   const { data: featuredJobs = [], isLoading, error, refetch } = useQuery({
     queryKey: ['featuredJobs'],
     queryFn: async () => {
       console.log("Fetching featured jobs");
       try {
-        if (!connectionStatus) {
+        if (connectionStatus === false) {
           console.log("Testing connection before fetching jobs...");
-          const connected = await checkSupabaseConnection();
+          const connected = await checkSupabaseConnection(true);
           if (!connected) {
             throw new Error("Cannot connect to database");
           }
@@ -61,11 +100,6 @@ const Index = () => {
         }
 
         console.log("Featured jobs fetched successfully:", data?.length || 0, "jobs");
-        if (data && data.length > 0) {
-          console.log("First job:", data[0]);
-        } else {
-          console.log("No featured jobs found");
-        }
         return data || [];
       } catch (err: any) {
         console.error('Exception in featuredJobs query:', err);
@@ -78,25 +112,17 @@ const Index = () => {
   });
 
   useEffect(() => {
-    if (error) {
+    if (error && !error.message.includes("connect to database")) {
       console.error("Error loading featured jobs:", error);
-      toast({
-        variant: "destructive",
-        title: "Error loading jobs",
-        description: "Could not load featured jobs. Please try again later.",
-      });
+      setTimeout(() => {
+        toast({
+          variant: "destructive",
+          title: "Error loading jobs",
+          description: "Could not load featured jobs. Please try again later.",
+        });
+      }, 100);
     }
-  }, [error, toast]);
-
-  useEffect(() => {
-    if (!isLoading && featuredJobs.length === 0 && !error) {
-      console.log("No jobs loaded, attempting to refetch...");
-      const timer = setTimeout(() => {
-        refetch();
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [featuredJobs, isLoading, error, refetch]);
+  }, [error]);
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -119,6 +145,24 @@ const Index = () => {
       <Navbar />
       
       <section className="container px-4 md:px-8 pt-16 lg:pt-24">
+        {connectionStatus === false && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTriangle className="h-5 w-5" />
+            <AlertTitle>Connection Error</AlertTitle>
+            <AlertDescription className="flex justify-between items-center">
+              <div>Could not connect to the database. Some features may not work properly.</div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="ml-4 bg-white text-red-600 border-red-300 hover:bg-gray-100"
+                onClick={handleRetryConnection}
+              >
+                Retry Connection
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
