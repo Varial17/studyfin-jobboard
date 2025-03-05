@@ -10,7 +10,7 @@ import { motion } from "framer-motion";
 import { Globe } from "@/components/ui/globe";
 import { supabase, checkSupabaseConnection } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");

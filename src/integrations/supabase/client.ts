@@ -45,7 +45,9 @@ export const supabase = createClient<Database>(
           if (!response.ok) {
             console.error(`Supabase request failed: ${response.status} ${response.statusText}`, {
               url: urlStr,
-              method: options?.method || 'GET'
+              method: options?.method || 'GET',
+              status: response.status,
+              statusText: response.statusText
             });
             
             // Try to get more details about the error
@@ -57,7 +59,19 @@ export const supabase = createClient<Database>(
               if (errorData.code === 'PGRST301' || response.status === 401) {
                 console.warn('Authentication error detected, may need to refresh session');
                 connectionStatus.isConnected = false;
-                connectionStatus.lastError = new Error('Authentication error');
+                connectionStatus.lastError = new Error(`Authentication error: ${errorData.message || response.statusText}`);
+              }
+
+              // Add specific handling for 400 errors
+              if (response.status === 400) {
+                console.error('Bad request (400) error details:', {
+                  error: errorData,
+                  request: {
+                    url: urlStr,
+                    method: options?.method
+                  }
+                });
+                connectionStatus.lastError = new Error(`Bad request: ${errorData.message || response.statusText}`);
               }
             } catch (e) {
               // If we can't parse the error as JSON, just log the text
@@ -136,6 +150,15 @@ export const checkSupabaseConnection = async (forceCheck = false) => {
     
     if (error) {
       console.error("Supabase database connection test failed:", error);
+      
+      // Add detailed logging for specific error codes
+      if (error.code === '42501') {
+        console.error("Permission denied error. This may be an RLS policy issue.");
+      } else if (error.code === 'PGRST301') {
+        console.error("JWT authentication failed. Token may be invalid or expired.");
+      } else if (error.message.includes('network')) {
+        console.error("Network error detected. Check internet connection.");
+      }
       
       // Check if we should retry
       if (connectionStatus.retryCount < connectionStatus.maxRetries) {
