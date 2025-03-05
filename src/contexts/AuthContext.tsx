@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { User } from "@supabase/supabase-js";
+import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -15,6 +15,7 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   profile: UserProfile | null;
+  session: Session | null;
   refreshProfile: () => Promise<void>;
 };
 
@@ -22,11 +23,13 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   profile: null,
+  session: null,
   refreshProfile: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -77,7 +80,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         setLoading(true);
         // Get session
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error("Error getting session:", error);
@@ -90,14 +93,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           return;
         }
         
-        console.log("Auth session check:", session ? "Active session found" : "No active session");
+        const currentSession = data?.session;
+        console.log("Auth session check:", currentSession ? "Active session found" : "No active session");
+        setSession(currentSession);
         
-        if (session?.user) {
-          setUser(session.user);
+        if (currentSession?.user) {
+          setUser(currentSession.user);
           
           // Fetch profile
           try {
-            const profileData = await fetchProfile(session.user.id);
+            const profileData = await fetchProfile(currentSession.user.id);
             setProfile(profileData);
           } catch (profileError) {
             console.error("Error fetching initial profile:", profileError);
@@ -114,14 +119,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Listen for changes on auth state (login, sign out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth state changed:", event);
+      async (event, newSession) => {
+        console.log("Auth state changed:", event, newSession ? "session exists" : "no session");
+        
+        setSession(newSession);
         
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          if (session?.user) {
-            setUser(session.user);
+          if (newSession?.user) {
+            setUser(newSession.user);
             try {
-              const profileData = await fetchProfile(session.user.id);
+              const profileData = await fetchProfile(newSession.user.id);
               setProfile(profileData);
             } catch (profileError) {
               console.error("Error fetching profile after auth state change:", profileError);
@@ -130,6 +137,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
           setProfile(null);
+          setSession(null);
+          console.log("User signed out, cleared auth state");
         }
         
         setLoading(false);
@@ -142,7 +151,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [toast]);
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, session, loading, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

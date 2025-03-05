@@ -20,6 +20,13 @@ export const supabase = createClient<Database>(
       storageKey: 'studyfin-auth-key',
       detectSessionInUrl: true, // Handle OAuth redirects properly
     },
+    global: {
+      fetch: (...args) => {
+        // Log request before sending (useful for debugging)
+        console.log("Supabase fetch request:", args[0]);
+        return fetch(...args);
+      }
+    },
   }
 );
 
@@ -29,12 +36,13 @@ console.log("Supabase client initialized with URL:", SUPABASE_URL);
 // Create a helper function to check Supabase connection
 export const checkSupabaseConnection = async () => {
   try {
+    console.log("Testing Supabase connection...");
     const { data, error } = await supabase.from('profiles').select('count()', { count: 'exact' }).limit(1);
     if (error) {
       console.error("Supabase connection test failed:", error);
       return false;
     }
-    console.log("Supabase connection test successful");
+    console.log("Supabase connection test successful, count:", data);
     return true;
   } catch (error) {
     console.error("Unexpected error testing Supabase connection:", error);
@@ -42,5 +50,11 @@ export const checkSupabaseConnection = async () => {
   }
 };
 
-// Test connection on init
-checkSupabaseConnection();
+// Test connection on init - run immediately to check connectivity
+checkSupabaseConnection().then(connected => {
+  if (connected) {
+    console.log("✅ Supabase is connected and working");
+  } else {
+    console.error("❌ Could not connect to Supabase - check your network and credentials");
+  }
+});
