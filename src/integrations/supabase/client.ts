@@ -21,13 +21,38 @@ export const supabase = createClient<Database>(
       detectSessionInUrl: true, // Handle OAuth redirects properly
     },
     global: {
-      fetch: function customFetch(url: RequestInfo | URL, options?: RequestInit) {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      fetch: async (url: RequestInfo | URL, options?: RequestInit) => {
         try {
           // Enhanced logging for debugging connection issues
-          console.log("Supabase request to:", typeof url === 'string' ? url : url.toString());
-          return fetch(url, options);
+          const urlStr = typeof url === 'string' ? url : url.toString();
+          console.info(`Supabase request to: ${urlStr}`);
+          
+          const response = await fetch(url, options);
+          
+          // Log 400/500 errors to help with debugging
+          if (!response.ok) {
+            console.error(`Supabase request failed: ${response.status} ${response.statusText}`, {
+              url: urlStr,
+              method: options?.method || 'GET'
+            });
+            
+            // Try to get more details about the error
+            try {
+              const errorData = await response.clone().json();
+              console.error('Supabase error details:', errorData);
+            } catch (e) {
+              // If we can't parse the error as JSON, just log the text
+              const errorText = await response.clone().text();
+              console.error('Supabase error response:', errorText);
+            }
+          }
+          
+          return response;
         } catch (error) {
-          console.error("Supabase fetch error:", error);
+          console.error("Supabase network error:", error);
           throw error;
         }
       }
@@ -38,32 +63,53 @@ export const supabase = createClient<Database>(
 // Add debug info to console
 console.log("Supabase client initialized with URL:", SUPABASE_URL);
 
+// Connection status tracker
+let connectionStatus = {
+  lastChecked: null as number | null,
+  isConnected: false,
+  lastError: null as Error | null
+};
+
 // Create a helper function to check Supabase connection
 export const checkSupabaseConnection = async () => {
   try {
     console.log("Testing Supabase connection...");
+    connectionStatus.lastChecked = Date.now();
     
     // First check if auth is working
     const authResponse = await supabase.auth.getSession();
     if (authResponse.error) {
       console.error("Supabase auth connection test failed:", authResponse.error);
+      connectionStatus.isConnected = false;
+      connectionStatus.lastError = authResponse.error;
       return false;
     }
     
-    // Then try a simple database query
+    // Then try to access the public schema
     const { data, error } = await supabase.from('profiles').select('count()', { count: 'exact' }).limit(1);
     
     if (error) {
       console.error("Supabase database connection test failed:", error);
+      connectionStatus.isConnected = false;
+      connectionStatus.lastError = error;
       return false;
     }
     
     console.log("Supabase connection test successful:", data);
+    connectionStatus.isConnected = true;
+    connectionStatus.lastError = null;
     return true;
   } catch (error) {
     console.error("Critical Supabase connection error:", error);
+    connectionStatus.isConnected = false;
+    connectionStatus.lastError = error instanceof Error ? error : new Error(String(error));
     return false;
   }
+};
+
+// Get current connection status
+export const getConnectionStatus = () => {
+  return connectionStatus;
 };
 
 // Run a connection test immediately

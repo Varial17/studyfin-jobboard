@@ -1,8 +1,9 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, checkSupabaseConnection, getConnectionStatus } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { AlertCircle } from "lucide-react";
 
 type UserProfile = {
   role?: string;
@@ -17,6 +18,8 @@ type AuthContextType = {
   profile: UserProfile | null;
   session: Session | null;
   refreshProfile: () => Promise<void>;
+  connectionError: boolean;
+  retryConnection: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -25,6 +28,8 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   session: null,
   refreshProfile: async () => {},
+  connectionError: false,
+  retryConnection: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -32,6 +37,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [connectionError, setConnectionError] = useState(false);
   const { toast } = useToast();
 
   const fetchProfile = async (userId: string) => {
@@ -45,13 +51,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) {
         console.error("Error fetching profile:", error);
+        // Check if this is a connection error
+        if (error.code === "PGRST301" || error.message.includes("Failed to fetch")) {
+          setConnectionError(true);
+        }
         return null;
       }
       
       console.log("Profile data received:", data);
+      setConnectionError(false);
       return data;
     } catch (error) {
       console.error("Error in fetchProfile:", error);
+      setConnectionError(true);
       return null;
     }
   };
@@ -72,50 +84,92 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  useEffect(() => {
-    const initializeAuth = async () => {
-      console.log("Initializing auth context - checking session");
-      try {
-        setLoading(true);
-        
-        // Get session
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error("Error getting session:", sessionError);
-          toast({
-            variant: "destructive",
-            title: "Authentication error",
-            description: "There was a problem connecting to the authentication service. Please try refreshing.",
-          });
-          setLoading(false);
-          return;
-        }
+  const retryConnection = async () => {
+    setLoading(true);
+    const connected = await checkSupabaseConnection();
+    if (connected) {
+      setConnectionError(false);
+      toast({
+        title: "Connection restored",
+        description: "Successfully reconnected to the database.",
+      });
+      await initializeAuth();
+    } else {
+      setConnectionError(true);
+      toast({
+        variant: "destructive",
+        title: "Connection failed",
+        description: "Could not connect to the database. Please check your network connection.",
+      });
+    }
+    setLoading(false);
+  };
 
-        const currentSession = sessionData?.session;
-        console.log("Auth session check:", currentSession ? "Active session found" : "No active session");
-        
-        if (currentSession?.user) {
-          console.log("User found in session:", currentSession.user.email);
-          setUser(currentSession.user);
-          setSession(currentSession);
-          
-          // Fetch profile for the user
-          try {
-            const profileData = await fetchProfile(currentSession.user.id);
-            setProfile(profileData);
-          } catch (profileError) {
-            console.error("Error fetching initial profile:", profileError);
-          }
-        } else {
-          console.log("No user in current session");
-        }
-      } catch (error) {
-        console.error("Critical error in auth initialization:", error);
-      } finally {
+  const initializeAuth = async () => {
+    console.log("Initializing auth context - checking session");
+    try {
+      setLoading(true);
+      
+      // Get session
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error("Error getting session:", sessionError);
+        setConnectionError(true);
+        toast({
+          variant: "destructive",
+          title: "Authentication error",
+          description: "There was a problem connecting to the authentication service. Please try refreshing.",
+        });
         setLoading(false);
+        return;
       }
-    };
+
+      const currentSession = sessionData?.session;
+      console.log("Auth session check:", currentSession ? "Active session found" : "No active session");
+      
+      if (currentSession?.user) {
+        console.log("User found in session:", currentSession.user.email);
+        setUser(currentSession.user);
+        setSession(currentSession);
+        
+        // Fetch profile for the user
+        try {
+          const profileData = await fetchProfile(currentSession.user.id);
+          setProfile(profileData);
+        } catch (profileError) {
+          console.error("Error fetching initial profile:", profileError);
+        }
+      } else {
+        console.log("No user in current session");
+      }
+    } catch (error) {
+      console.error("Critical error in auth initialization:", error);
+      setConnectionError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Check connection status first
+    const connectionStatus = getConnectionStatus();
+    if (connectionStatus.lastChecked && !connectionStatus.isConnected) {
+      setConnectionError(true);
+      toast({
+        variant: "destructive",
+        title: "Connection Error",
+        description: "Could not connect to the database. Some features may not work properly.",
+        action: (
+          <button 
+            className="px-3 py-2 bg-white text-red-600 rounded-md hover:bg-gray-100"
+            onClick={retryConnection}
+          >
+            Retry
+          </button>
+        ),
+      });
+    }
 
     initializeAuth();
 
@@ -155,7 +209,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [toast]);
 
   return (
-    <AuthContext.Provider value={{ user, profile, session, loading, refreshProfile }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      profile, 
+      session, 
+      loading, 
+      refreshProfile, 
+      connectionError,
+      retryConnection 
+    }}>
+      {connectionError && !loading && (
+        <div className="bg-red-500 text-white p-2 text-center flex items-center justify-center space-x-2">
+          <AlertCircle className="h-4 w-4" />
+          <span>Connection issues detected. Some features may not work properly.</span>
+          <button 
+            className="px-3 py-1 bg-white text-red-600 rounded-md hover:bg-gray-100 text-sm font-medium"
+            onClick={retryConnection}
+          >
+            Retry Connection
+          </button>
+        </div>
+      )}
       {children}
     </AuthContext.Provider>
   );

@@ -1,12 +1,19 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, checkSupabaseConnection } from "@/integrations/supabase/client";
 
 export const StripeService = {
   async createCheckoutSession(userId: string): Promise<{ url: string } | { error: string }> {
     try {
       console.log("Creating checkout session for user:", userId);
       
-      // First check if we have a valid session
+      // First check if we have a valid connection
+      const connected = await checkSupabaseConnection();
+      if (!connected) {
+        console.error("Cannot create checkout session: No connection to Supabase");
+        return { error: "Cannot connect to the payment service. Please check your internet connection and try again." };
+      }
+      
+      // Then check if we have a valid session
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
         console.error("Session error:", sessionError);
