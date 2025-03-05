@@ -1,4 +1,3 @@
-
 export const translations = {
   en: {
     appName: "AI Recruiter",
@@ -132,6 +131,13 @@ export const translations = {
 
     // Navbar translations
     language: "Language",
+
+    // Settings page translations
+    settings: "Settings",
+    accountSettings: "Account Settings",
+    accountSettingsDesc: "Manage your account preferences and settings",
+    saveSettings: "Save Settings",
+    settingsUpdated: "Settings updated successfully",
   },
   zh: {
     appName: "AI 招聘",
@@ -265,5 +271,12 @@ export const translations = {
 
     // Navbar translations
     language: "语言",
+
+    // Settings page translations
+    settings: "设置",
+    accountSettings: "账户设置",
+    accountSettingsDesc: "管理您的账户首选项和设置",
+    saveSettings: "保存设置",
+    settingsUpdated: "设置更新成功",
   },
 };
