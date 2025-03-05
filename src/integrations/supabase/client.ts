@@ -29,10 +29,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
  */
 export const checkSupabaseConnection = async (silent: boolean = false): Promise<boolean> => {
   try {
-    // Try to make a simple query to check connection
+    // Instead of using profiles table which seems to cause issues,
+    // Try to make a simple query to the jobs table
     const { data, error } = await supabase
       .from('jobs')
-      .select('count(*)', { count: 'exact', head: true })
+      .select('id')
       .limit(1);
     
     if (error) {
@@ -62,17 +63,18 @@ export const resetConnectionAndRetry = async (): Promise<boolean> => {
     // Clear any cached auth session
     await supabase.auth.signOut({ scope: 'local' });
     
+    // Clear local storage items related to Supabase
+    try {
+      localStorage.removeItem('studyfin-auth-storage');
+      localStorage.removeItem('supabase.auth.token');
+    } catch (e) {
+      console.log("Error clearing local storage:", e);
+    }
+    
     // Wait a moment before trying again
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Force session refresh
-    const { data, error } = await supabase.auth.refreshSession();
-    
-    if (error) {
-      console.error("Error refreshing session:", error.message);
-    }
-    
-    // Check if jobs connection works after reset
+    // Try a simple query to test connection
     const connected = await checkSupabaseConnection();
     
     if (connected) {
