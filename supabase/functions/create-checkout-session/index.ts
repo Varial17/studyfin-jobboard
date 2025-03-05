@@ -20,16 +20,12 @@ serve(async (req) => {
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") || "";
 
     if (!stripeSecretKey) {
-      console.error("Stripe secret key not configured");
       return new Response(
         JSON.stringify({ error: "Stripe secret key not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Debug logs
-    console.log("Creating Supabase client with URL:", supabaseUrl);
-    
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16",
@@ -39,14 +35,11 @@ serve(async (req) => {
     const { user_id, return_url } = await req.json();
 
     if (!user_id) {
-      console.error("Missing user_id in request");
       return new Response(
         JSON.stringify({ error: "Missing user_id" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    console.log("Creating checkout session for user:", user_id);
 
     // Get the user from Supabase to use their email
     const { data: userData, error: userError } = await supabase.auth.admin.getUserById(user_id);
@@ -58,6 +51,8 @@ serve(async (req) => {
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log("Creating checkout session for user:", user_id);
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
@@ -87,8 +82,6 @@ serve(async (req) => {
         user_id: user_id,
       },
     });
-
-    console.log("Checkout session created with ID:", session.id);
 
     return new Response(
       JSON.stringify({ sessionId: session.id, url: session.url }),

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, MapPin, Building2, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -10,67 +10,32 @@ import { motion } from "framer-motion";
 import { Globe } from "@/components/ui/globe";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
-  const { data: featuredJobs = [], isLoading, error, refetch } = useQuery({
+  const { data: featuredJobs = [], isLoading } = useQuery({
     queryKey: ['featuredJobs'],
     queryFn: async () => {
       console.log("Fetching featured jobs");
-      try {
-        const { data, error } = await supabase
-          .from('jobs')
-          .select('*')
-          .eq('status', 'open')
-          .order('created_at', { ascending: false })
-          .limit(3);
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('status', 'open')
+        .order('created_at', { ascending: false })
+        .limit(3);
 
-        if (error) {
-          console.error('Error fetching featured jobs:', error);
-          throw error;
-        }
-
-        console.log("Featured jobs fetched successfully:", data?.length || 0, "jobs");
-        if (data && data.length > 0) {
-          console.log("First job:", data[0]);
-        } else {
-          console.log("No featured jobs found");
-        }
-        return data || [];
-      } catch (err) {
-        console.error('Exception in featuredJobs query:', err);
-        throw err;
+      if (error) {
+        console.error('Error fetching featured jobs:', error);
+        return [];
       }
+
+      console.log("Featured jobs count:", data?.length || 0);
+      return data || [];
     },
-    retry: 2,
-    retryDelay: 1000,
   });
-
-  useEffect(() => {
-    if (error) {
-      console.error("Error loading featured jobs:", error);
-      toast({
-        variant: "destructive",
-        title: "Error loading jobs",
-        description: "Could not load featured jobs. Please try again later.",
-      });
-    }
-  }, [error, toast]);
-
-  useEffect(() => {
-    if (!isLoading && featuredJobs.length === 0 && !error) {
-      console.log("No jobs loaded, attempting to refetch...");
-      const timer = setTimeout(() => {
-        refetch();
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [featuredJobs, isLoading, error, refetch]);
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -79,14 +44,6 @@ const Index = () => {
     }
     navigate(`/jobs?${params.toString()}`);
   };
-
-  useEffect(() => {
-    const testConnection = async () => {
-      await supabase.auth.getSession();
-      console.log("Auth session checked on Index page");
-    };
-    testConnection();
-  }, []);
 
   return (
     <div className="min-h-screen bg-[#F8F8FD]">
