@@ -30,7 +30,16 @@ export const supabase = createClient<Database>(
           const urlStr = typeof url === 'string' ? url : url.toString();
           console.info(`Supabase request to: ${urlStr}`);
           
-          const response = await fetch(url, options);
+          // Add additional headers for CORS troubleshooting
+          const enhancedOptions = {
+            ...options,
+            headers: {
+              ...options?.headers,
+              'X-Client-Info': 'studyfin-web-app'
+            }
+          };
+          
+          const response = await fetch(url, enhancedOptions);
           
           // Log 400/500 errors to help with debugging
           if (!response.ok) {
@@ -43,40 +52,72 @@ export const supabase = createClient<Database>(
             try {
               const errorData = await response.clone().json();
               console.error('Supabase error details:', errorData);
+              
+              // Check if this is an auth error
+              if (errorData.code === 'PGRST301' || response.status === 401) {
+                console.warn('Authentication error detected, may need to refresh session');
+                connectionStatus.isConnected = false;
+                connectionStatus.lastError = new Error('Authentication error');
+              }
             } catch (e) {
               // If we can't parse the error as JSON, just log the text
-              const errorText = await response.clone().text();
-              console.error('Supabase error response:', errorText);
+              try {
+                const errorText = await response.clone().text();
+                console.error('Supabase error response:', errorText);
+              } catch (textError) {
+                console.error('Could not extract error text from response');
+              }
             }
           }
           
           return response;
         } catch (error) {
           console.error("Supabase network error:", error);
+          connectionStatus.isConnected = false;
+          connectionStatus.lastError = error instanceof Error ? error : new Error(String(error));
           throw error;
         }
       }
     },
+    realtime: {
+      params: {
+        eventsPerSecond: 10
+      }
+    }
   }
 );
 
 // Add debug info to console
 console.log("Supabase client initialized with URL:", SUPABASE_URL);
+console.log("Connecting to Supabase...");
 
-// Connection status tracker
+// Connection status tracker with retry mechanism
 let connectionStatus = {
   lastChecked: null as number | null,
   isConnected: false,
-  lastError: null as Error | null
+  lastError: null as Error | null,
+  retryCount: 0,
+  maxRetries: 3
 };
 
-// Create a helper function to check Supabase connection
-export const checkSupabaseConnection = async () => {
+// Create a more robust helper function to check Supabase connection
+export const checkSupabaseConnection = async (forceCheck = false) => {
+  // If we checked recently and connection is good, use cached result
+  const now = Date.now();
+  if (!forceCheck && 
+      connectionStatus.lastChecked && 
+      (now - connectionStatus.lastChecked < 30000) && // 30 seconds cache
+      connectionStatus.isConnected) {
+    console.log("Using cached connection status: Connected");
+    return true;
+  }
+  
   try {
     console.log("Testing Supabase connection...");
-    connectionStatus.lastChecked = Date.now();
+    connectionStatus.lastChecked = now;
     
     // First check if auth is working
+    console.log("Testing auth connection...");
     const authResponse = await supabase.auth.getSession();
     if (authResponse.error) {
       console.error("Supabase auth connection test failed:", authResponse.error);
@@ -85,26 +126,68 @@ export const checkSupabaseConnection = async () => {
       return false;
     }
     
-    // Then try to access the public schema
-    const { data, error } = await supabase.from('profiles').select('count()', { count: 'exact' }).limit(1);
+    console.log("Auth connection successful, testing database access...");
+    
+    // Then try to access the public schema with a lightweight query
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('count(*)', { count: 'exact', head: true })
+      .limit(1);
     
     if (error) {
       console.error("Supabase database connection test failed:", error);
+      
+      // Check if we should retry
+      if (connectionStatus.retryCount < connectionStatus.maxRetries) {
+        connectionStatus.retryCount++;
+        console.log(`Retrying connection (${connectionStatus.retryCount}/${connectionStatus.maxRetries})...`);
+        
+        // Wait 2 seconds before retry
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return checkSupabaseConnection(true);
+      }
+      
       connectionStatus.isConnected = false;
       connectionStatus.lastError = error;
       return false;
     }
     
-    console.log("Supabase connection test successful:", data);
+    console.log("Supabase connection test successful");
     connectionStatus.isConnected = true;
     connectionStatus.lastError = null;
+    connectionStatus.retryCount = 0;
     return true;
   } catch (error) {
     console.error("Critical Supabase connection error:", error);
+    
+    // Check if we should retry
+    if (connectionStatus.retryCount < connectionStatus.maxRetries) {
+      connectionStatus.retryCount++;
+      console.log(`Retrying connection after error (${connectionStatus.retryCount}/${connectionStatus.maxRetries})...`);
+      
+      // Wait 2 seconds before retry
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return checkSupabaseConnection(true);
+    }
+    
     connectionStatus.isConnected = false;
     connectionStatus.lastError = error instanceof Error ? error : new Error(String(error));
     return false;
   }
+};
+
+// Reset connection stats and retry
+export const resetConnectionAndRetry = async () => {
+  console.log("Resetting connection status and retrying...");
+  connectionStatus = {
+    lastChecked: null,
+    isConnected: false,
+    lastError: null,
+    retryCount: 0,
+    maxRetries: 3
+  };
+  
+  return checkSupabaseConnection(true);
 };
 
 // Get current connection status
@@ -113,10 +196,51 @@ export const getConnectionStatus = () => {
 };
 
 // Run a connection test immediately
-checkSupabaseConnection().then(connected => {
+checkSupabaseConnection(true).then(connected => {
   if (connected) {
     console.log("✅ Supabase is connected and working");
   } else {
     console.error("❌ Could not connect to Supabase - check credentials and network");
+    console.error("Last error:", connectionStatus.lastError);
+    
+    // Add more diagnostic information to help troubleshoot
+    try {
+      if (typeof window !== 'undefined') {
+        console.log("Browser information:", navigator.userAgent);
+        console.log("Connection type:", (navigator as any).connection ? 
+          (navigator as any).connection.effectiveType : 'unknown');
+        
+        // Check for possible CORS issues
+        const isCrossOrigin = 
+          window.location.origin !== SUPABASE_URL && 
+          !SUPABASE_URL.includes('localhost');
+        
+        if (isCrossOrigin) {
+          console.warn("Possible CORS issue: App and Supabase on different origins");
+        }
+      }
+    } catch (error) {
+      console.error("Error gathering diagnostic info:", error);
+    }
   }
 });
+
+// Create a helper function to handle consistent Supabase error reporting
+export const handleSupabaseError = (error: any, context: string = 'operation') => {
+  console.error(`Supabase error in ${context}:`, error);
+  
+  // Mark connection as failed if this appears to be a connection issue
+  if (error.message?.includes('Failed to fetch') || 
+      error.code === 'PGRST301' ||
+      error.message?.includes('NetworkError')) {
+    connectionStatus.isConnected = false;
+    connectionStatus.lastError = error;
+  }
+  
+  return {
+    message: error.message || 'An unknown error occurred',
+    code: error.code || 'UNKNOWN',
+    status: error.status || 500,
+    isConnectionIssue: connectionStatus.isConnected === false
+  };
+};
