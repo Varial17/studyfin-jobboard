@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Search, MapPin, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -34,27 +34,41 @@ const Jobs = () => {
     queryFn: async () => {
       console.log("Fetching jobs with query:", searchQuery, "location:", locationFilter);
       
-      // Start with the base query
-      let query = supabase
-        .from("jobs")
-        .select("*")
-        .order("created_at", { ascending: false });
+      try {
+        // Start with the base query
+        let query = supabase
+          .from("jobs")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-      // Add filters if provided
-      if (searchQuery) {
-        query = query.ilike("title", `%${searchQuery}%`);
-      }
+        // Add filters if provided
+        if (searchQuery) {
+          query = query.ilike("title", `%${searchQuery}%`);
+        }
 
-      if (locationFilter) {
-        query = query.ilike("location", `%${locationFilter}%`);
-      }
+        if (locationFilter) {
+          query = query.ilike("location", `%${locationFilter}%`);
+        }
 
-      // Execute the query
-      const { data, error } = await query;
-      
-      // Log the results for debugging
-      if (error) {
-        console.error("Error fetching jobs:", error);
+        // Execute the query
+        const { data, error } = await query;
+        
+        // Log the results for debugging
+        if (error) {
+          console.error("Error fetching jobs:", error);
+          throw error;
+        }
+        
+        console.log("Jobs fetched:", data ? data.length : 0);
+        if (data && data.length > 0) {
+          console.log("First job:", data[0]);
+        } else {
+          console.log("No jobs found");
+        }
+        
+        return data || [];
+      } catch (error: any) {
+        console.error("Error in job fetch function:", error);
         toast({
           variant: "destructive",
           title: t("error"),
@@ -62,18 +76,27 @@ const Jobs = () => {
         });
         throw error;
       }
-      
-      console.log("Jobs fetched:", data ? data.length : 0);
-      console.log("First job (if any):", data && data.length > 0 ? data[0] : "No jobs found");
-      
-      return data || [];
     },
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 
   // If there's an error, display it
-  if (error) {
-    console.error("Error in jobs component:", error);
-  }
+  useEffect(() => {
+    if (error) {
+      console.error("Error in jobs component:", error);
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: "Failed to load jobs. Please try again.",
+      });
+    }
+  }, [error, toast, t]);
+
+  // Debug the jobs data
+  useEffect(() => {
+    console.log("Current jobs data:", jobs);
+  }, [jobs]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -110,7 +133,12 @@ const Jobs = () => {
                 onChange={(e) => setFilters({ ...filters, location: e.target.value })}
               />
             </div>
-            <Button className="w-full md:w-auto bg-primary hover:bg-primary/90">
+            <Button 
+              className="w-full md:w-auto bg-primary hover:bg-primary/90"
+              onClick={() => {
+                console.log("Search button clicked with filters:", { searchQuery, locationFilter });
+              }}
+            >
               Search Jobs
             </Button>
           </div>
@@ -162,7 +190,7 @@ const Jobs = () => {
                       <p className="text-gray-600">{job.company}</p>
                     </div>
                     <span className="text-sm text-gray-500">
-                      {new Date(job.created_at!).toLocaleDateString()}
+                      {job.created_at ? new Date(job.created_at).toLocaleDateString() : "N/A"}
                     </span>
                   </div>
                   <div className="flex items-center text-gray-500 mb-4">

@@ -61,22 +61,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Check active sessions and sets the user
     console.log("Initializing auth context");
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log("Auth session check:", session ? "Active session" : "No session");
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      
-      if (currentUser) {
-        const profileData = await fetchProfile(currentUser.id);
-        setProfile(profileData);
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error getting session:", error);
+          setLoading(false);
+          return;
+        }
+        
+        console.log("Auth session check:", session ? "Active session" : "No session");
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        
+        if (currentUser) {
+          const profileData = await fetchProfile(currentUser.id);
+          setProfile(profileData);
+        }
+      } catch (error) {
+        console.error("Error in auth initialization:", error);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     // Listen for changes on auth state (login, sign out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log("Auth state changed:", _event);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event);
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       
