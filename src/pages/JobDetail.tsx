@@ -10,6 +10,15 @@ import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useState } from "react";
 import type { Database } from "@/integrations/supabase/types";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
@@ -20,6 +29,7 @@ const JobDetail = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
 
   const { data: job, isLoading } = useQuery({
     queryKey: ["job", jobId],
@@ -59,11 +69,7 @@ const JobDetail = () => {
 
   const handleApplyClick = () => {
     if (!user) {
-      toast({
-        variant: "destructive",
-        title: t("error"),
-        description: t("loginToApply"),
-      });
+      setShowLoginDialog(true);
       return;
     }
     // Use regular navigation instead of opening in new tab
@@ -125,6 +131,34 @@ const JobDetail = () => {
           </CardFooter>
         </Card>
       </div>
+
+      {/* Login Dialog */}
+      <Dialog open={showLoginDialog} onOpenChange={setShowLoginDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("loginToApply")}</DialogTitle>
+            <DialogDescription>
+              {t("pleaseCompleteProfile")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-center gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowLoginDialog(false)}
+            >
+              {t("cancel")}
+            </Button>
+            <Button 
+              onClick={() => {
+                setShowLoginDialog(false);
+                navigate("/auth");
+              }}
+            >
+              {t("signup")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 export const translations = {
   en: {
     search: "Search jobs, companies, or keywords...",
