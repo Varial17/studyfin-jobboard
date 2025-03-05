@@ -21,7 +21,7 @@ export const supabase = createClient<Database>(
       detectSessionInUrl: true, // Handle OAuth redirects properly
     },
     global: {
-      fetch: (...args) => {
+      fetch: function customFetch(...args) {
         // Log request before sending (useful for debugging)
         console.log("Supabase fetch request:", args[0]);
         return fetch(...args);

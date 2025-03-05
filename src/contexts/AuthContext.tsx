@@ -92,6 +92,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setLoading(false);
           return;
         }
+
+        // Debug URL info to help troubleshoot redirect issues
+        const urlDebug = {
+          hash: window.location.hash,
+          hash_params: {
+            accessToken: window.location.hash.includes("access_token") 
+              ? new URLSearchParams(window.location.hash.substring(1)).get("access_token")
+              : null,
+            tokenType: window.location.hash.includes("token_type")
+              ? new URLSearchParams(window.location.hash.substring(1)).get("token_type")
+              : null,
+            error: window.location.hash.includes("error")
+              ? new URLSearchParams(window.location.hash.substring(1)).get("error")
+              : null,
+            errorDescription: window.location.hash.includes("error_description")
+              ? new URLSearchParams(window.location.hash.substring(1)).get("error_description")
+              : null,
+          },
+          search: window.location.search,
+          search_params: {
+            token: new URLSearchParams(window.location.search).get("token"),
+            type: new URLSearchParams(window.location.search).get("type"),
+            emailFromUrl: new URLSearchParams(window.location.search).get("email"),
+            isResetMode: window.location.search.includes("type=recovery"),
+          },
+        };
+        console.log("URL Debug:", urlDebug);
         
         const currentSession = data?.session;
         console.log("Auth session check:", currentSession ? "Active session found" : "No active session");
@@ -126,6 +153,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           if (newSession?.user) {
+            console.log("User signed in or token refreshed:", newSession.user.email);
             setUser(newSession.user);
             try {
               const profileData = await fetchProfile(newSession.user.id);

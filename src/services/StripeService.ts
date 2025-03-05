@@ -7,12 +7,18 @@ export const StripeService = {
       console.log("Creating checkout session for user:", userId);
       
       // First check if we have a valid session
-      const { data: sessionData } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error("Session error:", sessionError);
+        return { error: "Authentication error: " + sessionError.message };
+      }
+      
       if (!sessionData.session) {
         console.error("No active session found");
         return { error: "You must be logged in to create a checkout session" };
       }
       
+      console.log("Invoking Supabase function: create-checkout-session");
       const { data, error } = await supabase.functions.invoke("create-checkout-session", {
         body: {
           user_id: userId,

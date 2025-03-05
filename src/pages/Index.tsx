@@ -8,7 +8,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
 import { Globe } from "@/components/ui/globe";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, checkSupabaseConnection } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,16 +17,41 @@ const Index = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [connectionStatus, setConnectionStatus] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const verifyConnection = async () => {
+      const connected = await checkSupabaseConnection();
+      setConnectionStatus(connected);
+      
+      if (!connected) {
+        toast({
+          variant: "destructive",
+          title: "Connection Error",
+          description: "Could not connect to the database. Please check your internet connection.",
+        });
+      }
+    };
+    
+    verifyConnection();
+  }, [toast]);
 
   const { data: featuredJobs = [], isLoading, error, refetch } = useQuery({
     queryKey: ['featuredJobs'],
     queryFn: async () => {
       console.log("Fetching featured jobs");
       try {
+        if (!connectionStatus) {
+          console.log("Testing connection before fetching jobs...");
+          const connected = await checkSupabaseConnection();
+          if (!connected) {
+            throw new Error("Cannot connect to database");
+          }
+        }
+
         const { data, error } = await supabase
           .from('jobs')
           .select('*')
-          .eq('status', 'open')
           .order('created_at', { ascending: false })
           .limit(3);
 
@@ -42,13 +67,14 @@ const Index = () => {
           console.log("No featured jobs found");
         }
         return data || [];
-      } catch (err) {
+      } catch (err: any) {
         console.error('Exception in featuredJobs query:', err);
-        throw err;
+        throw new Error(err.message || "Failed to fetch jobs");
       }
     },
     retry: 2,
     retryDelay: 1000,
+    enabled: connectionStatus !== false,
   });
 
   useEffect(() => {
@@ -92,7 +118,6 @@ const Index = () => {
     <div className="min-h-screen bg-[#F8F8FD]">
       <Navbar />
       
-      {/* Hero Section */}
       <section className="container px-4 md:px-8 pt-16 lg:pt-24">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <motion.div 
@@ -114,7 +139,6 @@ const Index = () => {
               {t("opportunities")}
             </p>
 
-            {/* Search Bar */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -169,7 +193,6 @@ const Index = () => {
           </motion.div>
         </div>
 
-        {/* Stats Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
           {[
             { icon: Building2, text: "100+ " + t("jobsPosted"), color: "from-blue-500/20 to-blue-500/5" },
@@ -195,7 +218,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Featured Jobs Section */}
       <section className="container px-4 py-16">
         <motion.h2 
           initial={{ opacity: 0, y: 20 }}
@@ -206,6 +228,33 @@ const Index = () => {
         >
           {t("featuredJobs")}
         </motion.h2>
+        
+        {connectionStatus === false && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-6">
+            <p className="font-medium">Database connection error</p>
+            <p className="text-sm">We're having trouble connecting to our database. Jobs may not load properly.</p>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="mt-2 text-red-600 border-red-300"
+              onClick={() => {
+                checkSupabaseConnection().then(connected => {
+                  setConnectionStatus(connected);
+                  if (connected) {
+                    refetch();
+                    toast({
+                      title: "Connection restored",
+                      description: "Successfully reconnected to the database.",
+                    });
+                  }
+                });
+              }}
+            >
+              Retry Connection
+            </Button>
+          </div>
+        )}
+        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {isLoading ? (
             Array(3).fill(0).map((_, index) => (
@@ -256,6 +305,14 @@ const Index = () => {
           ) : (
             <div className="col-span-3 text-center text-gray-500 py-8">
               No featured jobs available at the moment.
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="mt-2 mx-auto block"
+                onClick={() => refetch()}
+              >
+                Refresh
+              </Button>
             </div>
           )}
         </div>
