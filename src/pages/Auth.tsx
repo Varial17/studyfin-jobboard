@@ -1,11 +1,11 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -18,22 +18,25 @@ const Auth = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { t } = useLanguage();
+  const { user } = useAuth();
 
   useEffect(() => {
-    // Extract parameters from both URL hash and search params
+    if (user) {
+      navigate("/profile");
+    }
+  }, [user, navigate]);
+
+  useEffect(() => {
     const params = new URLSearchParams(location.hash.substring(1));
     const searchParams = new URLSearchParams(location.search);
     const isResetMode = searchParams.get('type') === 'reset';
     
-    // Check for errors in the hash params
     const error = params.get('error');
     const errorDescription = params.get('error_description');
     
-    // Check for access token in the hash (new format)
     const accessToken = params.get('access_token');
     const tokenType = params.get('type');
     
-    // Check URL parameters from search (old format)
     const token = searchParams.get('token');
     const type = searchParams.get('type');
     const emailFromUrl = searchParams.get('email');
@@ -55,7 +58,6 @@ const Auth = () => {
       }
     });
 
-    // Handle errors
     if (error) {
       let errorMsg = errorDescription;
       if (error === "access_denied" || errorDescription?.includes("invalid")) {
@@ -74,7 +76,6 @@ const Auth = () => {
       return;
     }
 
-    // Handle hash-based recovery token (new format)
     if (accessToken && tokenType === 'recovery') {
       console.log("Found access_token in hash with recovery type");
       setIsResettingPassword(true);
@@ -83,11 +84,9 @@ const Auth = () => {
       return;
     }
     
-    // Handle query param based recovery token (old format)
     if (token && type === 'recovery' && emailFromUrl) {
       const verifyToken = async () => {
         try {
-          // The token from the URL needs to be verified first
           const { error } = await supabase.auth.verifyOtp({
             token,
             type: 'recovery',
@@ -118,8 +117,6 @@ const Auth = () => {
       verifyToken();
     }
     
-    // When we detect we're in reset mode but no specific tokens yet,
-    // this could be a page load before the hash is processed
     if (isResetMode && !accessToken && !token) {
       console.log("Reset mode detected but no tokens found yet");
     }
@@ -131,7 +128,6 @@ const Auth = () => {
 
     try {
       if (isResettingPassword) {
-        // Extract the access token from the URL hash
         const params = new URLSearchParams(location.hash.substring(1));
         const access_token = params.get('access_token');
         
@@ -141,7 +137,6 @@ const Auth = () => {
 
         console.log("Updating password with token");
         
-        // The session is already set by Supabase when navigating with the recovery token
         const { error } = await supabase.auth.updateUser({
           password: password
         });
@@ -154,7 +149,6 @@ const Auth = () => {
           duration: 5000,
         });
         
-        // Reset states and redirect to login
         setIsResettingPassword(false);
         setIsLogin(true);
         setPassword("");
@@ -192,7 +186,6 @@ const Auth = () => {
 
         console.log("Sign in successful:", data);
         
-        // Check if profile exists
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("full_name, title")
@@ -209,15 +202,7 @@ const Auth = () => {
           duration: 3000,
         });
 
-        navigate("/profile");
-        
-        if (!profile?.full_name || !profile?.title) {
-          toast({
-            title: t("welcomeToStudyFin"),
-            description: t("pleaseCompleteProfile"),
-            duration: 6000,
-          });
-        }
+        navigate("/profile", { replace: true });
       } else {
         console.log("Attempting to sign up with:", email);
         const { data, error } = await supabase.auth.signUp({ 

@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase, checkSupabaseConnection, resetConnectionAndRetry } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
 
 type UserProfile = {
@@ -38,6 +38,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [connectionError, setConnectionError] = useState(false);
+  const { toast } = useToast();
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -84,7 +85,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setLoading(true);
     console.log("Retrying connection...");
     
-    await resetConnectionAndRetry();
     const connected = await checkSupabaseConnection(true);
     
     console.log("Connection retry result:", connected ? "Connected" : "Failed");
@@ -111,6 +111,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     console.log("Initializing auth context - checking session");
     try {
       setLoading(true);
+      
+      // Check connection first
+      const connected = await checkSupabaseConnection();
+      if (!connected) {
+        setConnectionError(true);
+        setLoading(false);
+        return;
+      }
       
       // Get session
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
