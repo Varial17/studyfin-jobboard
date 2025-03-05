@@ -10,35 +10,18 @@ import { BasicInfoSection } from "@/components/profile/BasicInfoSection";
 import { ContactInfoSection } from "@/components/profile/ContactInfoSection";
 import { EducationSection } from "@/components/profile/EducationSection";
 import { ProfessionalInfoSection } from "@/components/profile/ProfessionalInfoSection";
+import { RoleSelectionSection } from "@/components/profile/RoleSelectionSection";
 import { Navbar } from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
 
-type ApplicantProfileData = {
-  full_name: string;
-  title: string;
-  bio: string;
-  location: string;
-  phone_number: string;
-  website: string;
-  university: string;
-  field_of_study: string;
-  graduation_year: string;
-  student_status: string;
-  cv_url: string;
-  github_url: string;
-  linkedin_url: string;
-  role: string;
-};
-
 const ApplicantProfile = () => {
   const { applicantId } = useParams();
-  const { user, profile: userProfile } = useAuth(); // Renamed to userProfile to avoid conflict
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [redirecting, setRedirecting] = useState(false);
-  const [applicantProfile, setApplicantProfile] = useState<ApplicantProfileData>({ // Renamed to applicantProfile
+  const [profile, setProfile] = useState({
     full_name: "",
     title: "",
     bio: "",
@@ -61,26 +44,6 @@ const ApplicantProfile = () => {
       return;
     }
 
-    // Check if the user is an employer
-    const isEmployer = userProfile?.role === 'employer'; // Updated to userProfile
-    
-    // If not an employer, redirect to settings after a short delay
-    if (!isEmployer && !redirecting) {
-      setRedirecting(true);
-      toast({
-        title: t("access_denied"),
-        description: t("employer_role_required_view_applicant"),
-        variant: "destructive",
-      });
-      
-      // Short delay to allow toast to be seen before redirecting
-      const timeout = setTimeout(() => {
-        navigate("/profile/settings");
-      }, 2000);
-      
-      return () => clearTimeout(timeout);
-    }
-
     const fetchApplicantProfile = async () => {
       try {
         const { data, error } = await supabase
@@ -92,8 +55,8 @@ const ApplicantProfile = () => {
         if (error) throw error;
         
         if (data) {
-          setApplicantProfile({ // Updated to setApplicantProfile
-            ...applicantProfile, // Updated to applicantProfile
+          setProfile({
+            ...profile,
             full_name: data.full_name || "",
             title: data.title || "",
             bio: data.bio || "",
@@ -122,35 +85,13 @@ const ApplicantProfile = () => {
       }
     };
 
-    if (isEmployer) {
-      fetchApplicantProfile();
-    }
-  }, [user, applicantId, navigate, t, toast, userProfile?.role, redirecting, applicantProfile]); // Updated dependency array
+    fetchApplicantProfile();
+  }, [user, applicantId, navigate, t, toast]);
 
-  // Show loading or redirecting state
-  if (loading && !redirecting) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <span className="text-lg">{t("loading")}</span>
-      </div>
-    );
-  }
-  
-  if (redirecting) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex gap-6">
-            <ProfileSidebar />
-            <div className="flex-1 max-w-4xl space-y-6">
-              <h1 className="text-2xl font-bold mb-6">{t("applicantProfile")}</h1>
-              <div className="bg-white dark:bg-neutral-800 p-6 rounded-lg shadow">
-                <p className="text-center py-4">{t("redirecting_to_settings")}</p>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     );
   }
@@ -163,16 +104,16 @@ const ApplicantProfile = () => {
           <ProfileSidebar />
           <div className="flex-1 max-w-4xl space-y-6">
             <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold">{applicantProfile.full_name}</h1>
-              <Badge variant={applicantProfile.role === 'applicant' ? 'default' : 'secondary'}>
-                {applicantProfile.role === 'applicant' ? t('applicantRole') : t('employerRole')}
+              <h1 className="text-2xl font-bold">{profile.full_name}</h1>
+              <Badge variant={profile.role === 'applicant' ? 'default' : 'secondary'}>
+                {profile.role === 'applicant' ? t('applicantRole') : t('employerRole')}
               </Badge>
             </div>
-            <BasicInfoSection profile={applicantProfile} setProfile={() => {}} />
-            <ContactInfoSection profile={applicantProfile} setProfile={() => {}} userEmail={""} />
-            <EducationSection profile={applicantProfile} setProfile={() => {}} />
+            <BasicInfoSection profile={profile} setProfile={() => {}} />
+            <ContactInfoSection profile={profile} setProfile={() => {}} userEmail={""} />
+            <EducationSection profile={profile} setProfile={() => {}} />
             <ProfessionalInfoSection
-              profile={applicantProfile}
+              profile={profile}
               setProfile={() => {}}
               uploading={false}
               handleCVUpload={() => {}}

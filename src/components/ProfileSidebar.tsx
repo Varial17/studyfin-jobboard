@@ -34,7 +34,7 @@ export function ProfileSidebar() {
     },
     {
       label: "Settings",
-      href: "/profile/settings",
+      href: "/profile",
       icon: <Settings className="h-5 w-5" />,
     },
   ];
