@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,8 @@ const PostJob = () => {
   const { toast } = useToast();
   const { t } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<JobFormData>({
     title: "",
@@ -38,6 +41,43 @@ const PostJob = () => {
     salary_range: "",
     visa_sponsorship: false,
   });
+
+  useEffect(() => {
+    const checkUserRole = async () => {
+      if (!user) {
+        navigate('/auth');
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+
+        setUserRole(data?.role || null);
+        
+        // Redirect if user is not an employer
+        if (data?.role !== 'employer') {
+          toast({
+            title: t("accessDenied"),
+            description: t("employerOnly"),
+            variant: "destructive",
+          });
+          navigate('/profile');
+        }
+      } catch (error) {
+        console.error('Error fetching user role:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkUserRole();
+  }, [user, navigate, toast, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,6 +120,19 @@ const PostJob = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-neutral-900 flex justify-center items-center">
+        <p className="text-lg">{t("loading")}...</p>
+      </div>
+    );
+  }
+
+  // Only show the form if user is an employer
+  if (userRole !== 'employer') {
+    return null; // This shouldn't render as the user should be redirected
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">

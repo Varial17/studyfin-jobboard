@@ -3,12 +3,39 @@ import { useAuth } from "@/contexts/AuthContext";
 import { User, Briefcase, Plus, Settings, LogOut, ClipboardList } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 export function ProfileSidebar() {
   const { user } = useAuth();
   const [isLogoutHovered, setIsLogoutHovered] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    if (user) {
+      const fetchUserRole = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+          
+          if (error) throw error;
+          setUserRole(data?.role || 'applicant');
+        } catch (error) {
+          console.error('Error fetching user role:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      fetchUserRole();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
   
   const links = [
     {
@@ -32,13 +59,15 @@ export function ProfileSidebar() {
         <ClipboardList className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
       ),
     },
-    {
-      label: "Post Job",
-      href: "/profile/post-job",
-      icon: (
-        <Plus className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
-      ),
-    },
+    ...(userRole === 'employer' ? [
+      {
+        label: "Post Job",
+        href: "/profile/post-job",
+        icon: (
+          <Plus className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
+        ),
+      }
+    ] : []),
     {
       label: "Settings",
       href: "/settings",
@@ -51,6 +80,10 @@ export function ProfileSidebar() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
+
+  if (loading) {
+    return <Sidebar><SidebarBody className="justify-center items-center"><p>Loading...</p></SidebarBody></Sidebar>;
+  }
 
   return (
     <Sidebar>
