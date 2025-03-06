@@ -64,7 +64,7 @@ const PostJob = () => {
         if (data?.role !== 'employer') {
           toast({
             title: t("accessDenied"),
-            description: t("employerOnly"),
+            description: t("employerRoleRequired"),
             variant: "destructive",
           });
           navigate('/profile');
