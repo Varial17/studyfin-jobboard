@@ -13,6 +13,7 @@ import Jobs from "./pages/Jobs";
 import JobDetail from "./pages/JobDetail";
 import JobApplication from "./pages/JobApplication";
 import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
 import PostJob from "@/pages/PostJob";
 import JobApplications from "@/pages/JobApplications";
 import ApplicantProfile from "@/pages/ApplicantProfile";
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/jobs/:jobId" element={<JobDetail />} />
               <Route path="/jobs/:jobId/apply" element={<JobApplication />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="/profile/post-job" element={<PostJob />} />
               <Route path="/profile/applications" element={<JobApplications />} />
               <Route path="/profile/applicant/:applicantId" element={<ApplicantProfile />} />
