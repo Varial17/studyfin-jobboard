@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,7 +9,6 @@ import { BasicInfoSection } from "@/components/profile/BasicInfoSection";
 import { ContactInfoSection } from "@/components/profile/ContactInfoSection";
 import { EducationSection } from "@/components/profile/EducationSection";
 import { ProfessionalInfoSection } from "@/components/profile/ProfessionalInfoSection";
-import { RoleSelectionSection } from "@/components/profile/RoleSelectionSection";
 import { Navbar } from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
 
@@ -70,7 +68,6 @@ const ApplicantProfile = () => {
             cv_url: data.cv_url || "",
             github_url: data.github_url || "",
             linkedin_url: data.linkedin_url || "",
-            // Handle the potential absence of role property
             role: (data as any).role || "applicant",
           });
         }
