@@ -125,15 +125,38 @@ const JobApplication = () => {
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
+      // Insert the application
+      const { data: application, error } = await supabase
         .from("applications")
         .insert({
           job_id: job.id,
           applicant_id: user.id,
           cover_letter: coverLetter,
-        });
+          zoho_synced: false, // Add this new field
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
+
+      // Check if employer has Zoho connected
+      const { data: employerProfile } = await supabase
+        .from("profiles")
+        .select("zoho_connected")
+        .eq("id", job.employer_id)
+        .single();
+
+      // If Zoho is connected, sync the application
+      if (employerProfile?.zoho_connected) {
+        try {
+          await supabase.functions.invoke('sync-job-application', {
+            body: { applicationId: application.id }
+          });
+        } catch (syncError) {
+          console.error("Error syncing to Zoho:", syncError);
+          // Continue even if sync fails
+        }
+      }
 
       toast({
         title: t("success"),

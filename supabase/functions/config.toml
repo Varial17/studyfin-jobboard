@@ -1,0 +1,8 @@
+
+project_id = "nluwegaxtjekbpccjuxt"
+
+[global.env]
+SUPABASE_URL = "env:SUPABASE_URL"
+SUPABASE_SERVICE_ROLE_KEY = "env:SUPABASE_SERVICE_ROLE_KEY"
+ZOHO_CLIENT_ID = "env:ZOHO_CLIENT_ID"
+ZOHO_CLIENT_SECRET = "env:ZOHO_CLIENT_SECRET"

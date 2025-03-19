@@ -17,6 +17,8 @@ import Settings from "./pages/Settings";
 import PostJob from "@/pages/PostJob";
 import JobApplications from "@/pages/JobApplications";
 import ApplicantProfile from "@/pages/ApplicantProfile";
+import ZohoIntegration from "@/pages/ZohoIntegration";
+import ZohoCallback from "@/pages/ZohoCallback";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +42,8 @@ const App = () => (
               <Route path="/profile/applications" element={<JobApplications />} />
               <Route path="/profile/applicant/:applicantId" element={<ApplicantProfile />} />
               <Route path="/profile/jobs/:jobId/applications" element={<JobApplications />} />
+              <Route path="/profile/zoho" element={<ZohoIntegration />} />
+              <Route path="/auth/zoho/callback" element={<ZohoCallback />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
