@@ -17,15 +17,20 @@ const ZohoIntegration = () => {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkUserRole = async () => {
+      console.log("ZohoIntegration: Auth state", { user, userExists: !!user, userId: user?.id });
+      
       if (!user) {
+        console.log("ZohoIntegration: No user found, redirecting to auth");
         navigate('/auth');
         return;
       }
 
       try {
+        console.log("ZohoIntegration: Fetching profile for user", user.id);
         const { data, error } = await supabase
           .from('profiles')
           .select('role, zoho_connected')
@@ -34,15 +39,18 @@ const ZohoIntegration = () => {
 
         if (error) {
           console.error('Error fetching profile:', error);
+          setError(error.message);
           setLoading(false);
           return;
         }
 
+        console.log("ZohoIntegration: Profile data", data);
         setUserRole(data?.role || null);
         setConnected(data?.zoho_connected || false);
         
-        // Redirect if user is not an employer
-        if (data?.role !== 'employer') {
+        // Redirect only if user is definitely not an employer
+        if (data?.role && data.role !== 'employer') {
+          console.log("ZohoIntegration: User is not an employer, redirecting to profile");
           toast({
             title: "Access Denied",
             description: "Only employers can connect to Zoho CRM",
@@ -50,8 +58,9 @@ const ZohoIntegration = () => {
           });
           navigate('/profile');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching user role:', error);
+        setError(error.message);
       } finally {
         setLoading(false);
       }
@@ -61,16 +70,28 @@ const ZohoIntegration = () => {
   }, [user, navigate, toast]);
 
   const initiateZohoConnection = async () => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to connect to Zoho CRM",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
+    
     try {
+      console.log("ZohoIntegration: Initiating Zoho connection");
       // Call Supabase Edge Function to get the authorization URL
       const { data, error } = await supabase.functions.invoke('zoho-auth', {
         body: { 
-          redirectUrl: `https://jobs.studyfin.com.au/auth/zoho/callback`
+          redirectUrl: `${window.location.origin}/auth/zoho/callback`
         }
       });
 
       if (error) throw error;
       
+      console.log("ZohoIntegration: Received auth URL", data);
       // Redirect to Zoho authorization page
       window.location.href = data.authUrl;
     } catch (error: any) {
@@ -84,12 +105,23 @@ const ZohoIntegration = () => {
   };
 
   const disconnectZoho = async () => {
+    if (!user) {
+      toast({
+        title: "Error", 
+        description: "You must be logged in to disconnect from Zoho CRM",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
+    
     try {
       setLoading(true);
       
+      console.log("ZohoIntegration: Disconnecting from Zoho");
       // Call Supabase Edge Function to revoke token
       const { error: revokeError } = await supabase.functions.invoke('zoho-disconnect', {
-        body: { userId: user?.id }
+        body: { userId: user.id }
       });
 
       if (revokeError) throw revokeError;
@@ -98,7 +130,7 @@ const ZohoIntegration = () => {
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ zoho_connected: false })
-        .eq('id', user?.id);
+        .eq('id', user.id);
         
       if (updateError) throw updateError;
       
@@ -121,8 +153,26 @@ const ZohoIntegration = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-neutral-900 flex justify-center items-center">
-        <p className="text-lg">Loading...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8 flex justify-center items-center">
+          <p className="text-lg">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8 flex justify-center items-center">
+          <Alert variant="destructive" className="max-w-md">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+            <Button className="mt-4" onClick={() => navigate('/profile')}>Go Back to Profile</Button>
+          </Alert>
+        </div>
       </div>
     );
   }
@@ -160,11 +210,16 @@ const ZohoIntegration = () => {
                   </Alert>
                 )}
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex flex-col items-start gap-4">
                 {connected ? (
-                  <Button variant="destructive" onClick={disconnectZoho} disabled={loading}>
-                    Disconnect from Zoho CRM
-                  </Button>
+                  <>
+                    <Button variant="destructive" onClick={disconnectZoho} disabled={loading}>
+                      Disconnect from Zoho CRM
+                    </Button>
+                    <Button onClick={() => navigate('/profile/zoho/admin')}>
+                      Go to Zoho Admin Panel
+                    </Button>
+                  </>
                 ) : (
                   <Button onClick={initiateZohoConnection} disabled={loading}>
                     Connect to Zoho CRM

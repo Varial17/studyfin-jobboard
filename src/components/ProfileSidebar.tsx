@@ -1,6 +1,6 @@
 
 import { useAuth } from "@/contexts/AuthContext";
-import { User, Briefcase, Plus, Settings, LogOut, ClipboardList } from "lucide-react";
+import { User, Briefcase, Plus, Settings, LogOut, ClipboardList, LinkIcon } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
@@ -11,6 +11,7 @@ export function ProfileSidebar() {
   const [isLogoutHovered, setIsLogoutHovered] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [zohoConnected, setZohoConnected] = useState(false);
   
   useEffect(() => {
     if (user) {
@@ -18,12 +19,13 @@ export function ProfileSidebar() {
         try {
           const { data, error } = await supabase
             .from('profiles')
-            .select('role')
+            .select('role, zoho_connected')
             .eq('id', user.id)
             .single();
           
           if (error) throw error;
           setUserRole(data?.role || 'applicant');
+          setZohoConnected(data?.zoho_connected || false);
         } catch (error) {
           console.error('Error fetching user role:', error);
         } finally {
@@ -37,7 +39,8 @@ export function ProfileSidebar() {
     }
   }, [user]);
   
-  const links = [
+  // Base links for all users
+  let links = [
     {
       label: "Profile",
       href: "/profile",
@@ -54,28 +57,59 @@ export function ProfileSidebar() {
     },
     {
       label: "Applications",
-      href: "/profile/applications",
+      href: "/applications",
       icon: (
         <ClipboardList className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
       ),
     },
-    ...(userRole === 'employer' ? [
+  ];
+  
+  // Add employer-specific links
+  if (userRole === 'employer') {
+    links.push(
       {
         label: "Post Job",
-        href: "/profile/post-job",
+        href: "/post-job",
         icon: (
           <Plus className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
         ),
       }
-    ] : []),
+    );
+    
+    links.push(
+      {
+        label: "Zoho Integration",
+        href: "/profile/zoho",
+        icon: (
+          <LinkIcon className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
+        ),
+      }
+    );
+    
+    // Add Zoho Admin link if connected
+    if (zohoConnected) {
+      links.push(
+        {
+          label: "Zoho Admin",
+          href: "/profile/zoho/admin",
+          icon: (
+            <Settings className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
+          ),
+        }
+      );
+    }
+  }
+  
+  // Add settings link for all users
+  links.push(
     {
       label: "Settings",
       href: "/settings",
       icon: (
         <Settings className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
       ),
-    },
-  ];
+    }
+  );
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

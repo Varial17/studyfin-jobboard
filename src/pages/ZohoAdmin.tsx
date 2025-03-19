@@ -17,15 +17,22 @@ const ZohoAdmin = () => {
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; count?: number } | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isZohoConnected, setIsZohoConnected] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkUserRole = async () => {
+      console.log("ZohoAdmin: Auth state", { user, userExists: !!user, userId: user?.id });
+      
       if (!user) {
+        console.log("ZohoAdmin: No user found, redirecting to auth");
         navigate('/auth');
         return;
       }
 
       try {
+        console.log("ZohoAdmin: Fetching profile for user", user.id);
         const { data, error } = await supabase
           .from('profiles')
           .select('role, zoho_connected')
@@ -34,32 +41,43 @@ const ZohoAdmin = () => {
 
         if (error) {
           console.error('Error fetching profile:', error);
+          setError(error.message);
+          setLoading(false);
           return;
         }
 
+        console.log("ZohoAdmin: Profile data", data);
         setUserRole(data?.role || null);
+        setIsZohoConnected(data?.zoho_connected || false);
         
         // Redirect if user is not an employer
         if (data?.role !== 'employer') {
+          console.log("ZohoAdmin: User is not an employer, redirecting to profile");
           toast({
             title: "Access Denied",
             description: "Only employers can access Zoho CRM admin features",
             variant: "destructive",
           });
           navigate('/profile');
+          return;
         }
         
         // Redirect if not connected to Zoho
         if (!data?.zoho_connected) {
+          console.log("ZohoAdmin: User not connected to Zoho, redirecting to Zoho integration");
           toast({
             title: "Not Connected",
             description: "Please connect to Zoho CRM first",
             variant: "destructive",
           });
           navigate('/profile/zoho');
+          return;
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching user role:', error);
+        setError(error.message);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -67,11 +85,20 @@ const ZohoAdmin = () => {
   }, [user, navigate, toast]);
 
   const syncAllUsersToZoho = async () => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to sync users to Zoho CRM",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
     
     try {
       setSyncing(true);
       
+      console.log("ZohoAdmin: Syncing all users to Zoho");
       // Call the edge function
       const { data, error } = await supabase.functions.invoke('sync-all-users-to-zoho', {
         body: { employerId: user.id }
@@ -79,6 +106,7 @@ const ZohoAdmin = () => {
       
       if (error) throw error;
       
+      console.log("ZohoAdmin: Sync response", data);
       setResult(data);
       
       toast({
@@ -101,6 +129,32 @@ const ZohoAdmin = () => {
       setSyncing(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8 flex justify-center items-center">
+          <p className="text-lg">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8 flex justify-center items-center">
+          <Alert variant="destructive" className="max-w-md">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+            <Button className="mt-4" onClick={() => navigate('/profile')}>Go Back to Profile</Button>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
