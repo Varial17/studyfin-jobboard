@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,7 @@ const ZohoAdmin = () => {
   const [result, setResult] = useState<{ success: boolean; message: string; count?: number } | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
-  useState(() => {
+  useEffect(() => {
     const checkUserRole = async () => {
       if (!user) {
         navigate('/auth');
