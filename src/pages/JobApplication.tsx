@@ -132,7 +132,7 @@ const JobApplication = () => {
           job_id: job.id,
           applicant_id: user.id,
           cover_letter: coverLetter,
-          zoho_synced: false, // Add this new field
+          zoho_synced: false,
         })
         .select('id')
         .single();

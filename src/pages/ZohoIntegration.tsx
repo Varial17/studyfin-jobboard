@@ -32,7 +32,11 @@ const ZohoIntegration = () => {
           .eq('id', user.id)
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching profile:', error);
+          setLoading(false);
+          return;
+        }
 
         setUserRole(data?.role || null);
         setConnected(data?.zoho_connected || false);

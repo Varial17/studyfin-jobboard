@@ -18,6 +18,7 @@ export type Database = {
           job_id: string
           status: string | null
           updated_at: string | null
+          zoho_synced: boolean | null
         }
         Insert: {
           applicant_id: string
@@ -27,6 +28,7 @@ export type Database = {
           job_id: string
           status?: string | null
           updated_at?: string | null
+          zoho_synced?: boolean | null
         }
         Update: {
           applicant_id?: string
@@ -36,6 +38,7 @@ export type Database = {
           job_id?: string
           status?: string | null
           updated_at?: string | null
+          zoho_synced?: boolean | null
         }
         Relationships: [
           {
@@ -219,6 +222,7 @@ export type Database = {
           university: string | null
           updated_at: string | null
           website: string | null
+          zoho_connected: boolean | null
         }
         Insert: {
           avatar_url?: string | null
@@ -239,6 +243,7 @@ export type Database = {
           university?: string | null
           updated_at?: string | null
           website?: string | null
+          zoho_connected?: boolean | null
         }
         Update: {
           avatar_url?: string | null
@@ -259,6 +264,7 @@ export type Database = {
           university?: string | null
           updated_at?: string | null
           website?: string | null
+          zoho_connected?: boolean | null
         }
         Relationships: []
       }
@@ -290,6 +296,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      zoho_credentials: {
+        Row: {
+          access_token: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          refresh_token: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          refresh_token: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          refresh_token?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
