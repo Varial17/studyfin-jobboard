@@ -1,56 +1,58 @@
+import { 
+  BrowserRouter as Router, 
+  Routes, 
+  Route, 
+  Navigate 
+} from 'react-router-dom';
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { LanguageProvider } from "./contexts/LanguageContext";
-import { AuthProvider } from "./contexts/AuthContext";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import NotFound from "./pages/NotFound";
-import Jobs from "./pages/Jobs";
-import JobDetail from "./pages/JobDetail";
-import JobApplication from "./pages/JobApplication";
-import Profile from "./pages/Profile";
-import Settings from "./pages/Settings";
-import PostJob from "@/pages/PostJob";
-import JobApplications from "@/pages/JobApplications";
-import ApplicantProfile from "@/pages/ApplicantProfile";
-import ZohoIntegration from "@/pages/ZohoIntegration";
-import ZohoCallback from "@/pages/ZohoCallback";
+import {
+  Auth,
+  Jobs,
+  JobDetail,
+  JobApplication,
+  JobApplications,
+  PostJob,
+  Profile,
+  ApplicantProfile,
+  Index,
+  Settings,
+  NotFound,
+  ZohoIntegration,
+  ZohoCallback,
+  ZohoAdmin
+} from './pages';
 
-const queryClient = new QueryClient();
+import { AuthProvider } from './contexts/AuthContext';
+import { LanguageProvider } from './contexts/LanguageContext';
+import { Toaster } from './components/ui/toaster';
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+function App() {
+  return (
+    <AuthProvider>
       <LanguageProvider>
-        <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/jobs" element={<Jobs />} />
+            <Route path="/jobs/:id" element={<JobDetail />} />
+            <Route path="/jobs/:id/apply" element={<JobApplication />} />
+            <Route path="/applications" element={<JobApplications />} />
+            <Route path="/post-job" element={<PostJob />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/zoho" element={<ZohoIntegration />} />
+            <Route path="/profile/zoho/admin" element={<ZohoAdmin />} />
+            <Route path="/auth/zoho/callback" element={<ZohoCallback />} />
+            <Route path="/applicants/:id" element={<ApplicantProfile />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/404" element={<NotFound />} />
+            <Route path="*" element={<Navigate to="/404" replace />} />
+          </Routes>
           <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/jobs" element={<Jobs />} />
-              <Route path="/jobs/:jobId" element={<JobDetail />} />
-              <Route path="/jobs/:jobId/apply" element={<JobApplication />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/profile/post-job" element={<PostJob />} />
-              <Route path="/profile/applications" element={<JobApplications />} />
-              <Route path="/profile/applicant/:applicantId" element={<ApplicantProfile />} />
-              <Route path="/profile/jobs/:jobId/applications" element={<JobApplications />} />
-              <Route path="/profile/zoho" element={<ZohoIntegration />} />
-              <Route path="/auth/zoho/callback" element={<ZohoCallback />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </AuthProvider>
+        </Router>
       </LanguageProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+    </AuthProvider>
+  );
+}
 
 export default App;
