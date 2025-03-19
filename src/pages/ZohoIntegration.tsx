@@ -10,6 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { ProfileSidebar } from "@/components/ProfileSidebar";
 
+// Admin email that's allowed to access Zoho features
+const ADMIN_EMAIL = "admin@yourdomain.com"; // Replace with your email
+
 const ZohoIntegration = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -26,6 +29,18 @@ const ZohoIntegration = () => {
       if (!user) {
         console.log("ZohoIntegration: No user found, redirecting to auth");
         navigate('/auth');
+        return;
+      }
+
+      // Check if this user is the admin
+      if (user.email !== ADMIN_EMAIL) {
+        console.log("ZohoIntegration: User is not authorized to access Zoho features");
+        toast({
+          title: "Access Denied",
+          description: "You are not authorized to access Zoho integration features",
+          variant: "destructive",
+        });
+        navigate('/profile');
         return;
       }
 

@@ -6,12 +6,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
+// Admin email that's allowed to access Zoho features
+const ADMIN_EMAIL = "admin@yourdomain.com"; // Replace with your email
+
 export function ProfileSidebar() {
   const { user } = useAuth();
   const [isLogoutHovered, setIsLogoutHovered] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [zohoConnected, setZohoConnected] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
     if (user) {
@@ -26,6 +30,9 @@ export function ProfileSidebar() {
           if (error) throw error;
           setUserRole(data?.role || 'applicant');
           setZohoConnected(data?.zoho_connected || false);
+          
+          // Check if this user is the admin
+          setIsAdmin(user.email === ADMIN_EMAIL);
         } catch (error) {
           console.error('Error fetching user role:', error);
         } finally {
@@ -76,27 +83,30 @@ export function ProfileSidebar() {
       }
     );
     
-    links.push(
-      {
-        label: "Zoho Integration",
-        href: "/profile/zoho",
-        icon: (
-          <LinkIcon className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
-        ),
-      }
-    );
-    
-    // Add Zoho Admin link if connected
-    if (zohoConnected) {
+    // Only show Zoho links to the admin
+    if (isAdmin) {
       links.push(
         {
-          label: "Zoho Admin",
-          href: "/profile/zoho/admin",
+          label: "Zoho Integration",
+          href: "/profile/zoho",
           icon: (
-            <Settings className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
+            <LinkIcon className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
           ),
         }
       );
+      
+      // Add Zoho Admin link if connected
+      if (zohoConnected) {
+        links.push(
+          {
+            label: "Zoho Admin",
+            href: "/profile/zoho/admin",
+            icon: (
+              <Settings className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
+            ),
+          }
+        );
+      }
     }
   }
   
