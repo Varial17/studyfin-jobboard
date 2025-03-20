@@ -25,35 +25,51 @@ serve(async (req) => {
 
     const url = new URL(req.url);
     const path = url.pathname.split("/").pop();
+    
+    // If there's no path in the URL, assume it's the main create-checkout endpoint
+    const endpoint = path || "create-checkout";
+    
+    console.log(`Stripe function called with endpoint: ${endpoint}`);
+    
+    // Parse the request body
     const { user_id, return_url } = await req.json();
     
-    console.log(`Stripe function called with path: ${path}, user_id: ${user_id}`);
+    console.log(`Request data: user_id=${user_id}, return_url=${return_url}`);
 
     if (!user_id) {
       throw new Error("user_id is required");
     }
 
-    if (path === "create-checkout") {
+    if (endpoint === "create-checkout") {
       // Create a checkout session for a new subscription
+      const priceId = Deno.env.get("STRIPE_EMPLOYER_PRICE_ID");
+      if (!priceId) {
+        throw new Error("STRIPE_EMPLOYER_PRICE_ID is not set");
+      }
+      
+      console.log(`Creating checkout session with price ID: ${priceId}`);
+      
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
         line_items: [
           {
-            price: Deno.env.get("STRIPE_EMPLOYER_PRICE_ID"), // Price ID for the employer subscription
+            price: priceId,
             quantity: 1,
           },
         ],
         mode: "subscription",
         success_url: `${return_url}?success=true&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${return_url}?canceled=true`,
+        cancel_url: `${return_url}?success=false`,
         client_reference_id: user_id,
       });
+
+      console.log(`Checkout session created: ${session.id}`);
 
       return new Response(JSON.stringify({ id: session.id, url: session.url }), {
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     } 
-    else if (path === "customer-portal") {
+    else if (endpoint === "customer-portal") {
       // First, find the customer associated with the user
       const { data: customers } = await stripe.customers.list({
         email: user_id,
@@ -67,17 +83,21 @@ serve(async (req) => {
         throw new Error("Customer not found. User needs to create a subscription first.");
       }
 
+      console.log(`Found customer: ${customer.id}`);
+
       // Create a billing portal session
       const session = await stripe.billingPortal.sessions.create({
         customer: customer.id,
         return_url: return_url,
       });
 
+      console.log(`Created billing portal session: ${session.url}`);
+
       return new Response(JSON.stringify({ url: session.url }), {
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
-    else if (path === "webhook") {
+    else if (endpoint === "webhook") {
       // Handle webhook events from Stripe
       const signature = req.headers.get("stripe-signature");
       if (!signature) {
@@ -242,7 +262,7 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ error: "Invalid path" }), {
+    return new Response(JSON.stringify({ error: "Invalid endpoint" }), {
       status: 400,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });

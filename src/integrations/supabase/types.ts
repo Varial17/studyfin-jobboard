@@ -218,6 +218,8 @@ export type Database = {
           phone_number: string | null
           role: string | null
           student_status: string | null
+          subscription_id: string | null
+          subscription_status: string | null
           title: string | null
           university: string | null
           updated_at: string | null
@@ -239,6 +241,8 @@ export type Database = {
           phone_number?: string | null
           role?: string | null
           student_status?: string | null
+          subscription_id?: string | null
+          subscription_status?: string | null
           title?: string | null
           university?: string | null
           updated_at?: string | null
@@ -260,6 +264,8 @@ export type Database = {
           phone_number?: string | null
           role?: string | null
           student_status?: string | null
+          subscription_id?: string | null
+          subscription_status?: string | null
           title?: string | null
           university?: string | null
           updated_at?: string | null

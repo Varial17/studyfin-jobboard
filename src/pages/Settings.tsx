@@ -55,6 +55,7 @@ const Settings = () => {
           });
         }
       } catch (error) {
+        console.error("Error fetching profile:", error);
         toast({
           variant: "destructive",
           title: t("error"),
@@ -108,7 +109,7 @@ const Settings = () => {
     
     setCheckoutLoading(true);
     try {
-      const response = await supabase.functions.invoke('stripe-subscription/create-checkout', {
+      const response = await supabase.functions.invoke('stripe-subscription', {
         body: JSON.stringify({
           user_id: user.id,
           return_url: `${window.location.origin}/settings`
