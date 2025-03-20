@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,6 +32,7 @@ const Settings = () => {
   const [manageSubscriptionLoading, setManageSubscriptionLoading] = useState(false);
   const [stripeRedirectHandled, setStripeRedirectHandled] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
   // Handle Stripe redirect on component mount
   useEffect(() => {
@@ -174,7 +176,10 @@ const Settings = () => {
     
     setCheckoutLoading(true);
     setError(null);
+    setDebugInfo(null);
+    
     try {
+      console.log("Calling Stripe subscription endpoint...");
       const response = await supabase.functions.invoke('stripe-subscription', {
         body: JSON.stringify({
           user_id: user.email,
@@ -186,6 +191,13 @@ const Settings = () => {
         throw new Error(response.error.message || response.error || "Failed to start checkout process");
       }
       
+      // Debug information
+      console.log("Response from Stripe:", response);
+      
+      if (response.data && response.data.error) {
+        throw new Error(response.data.error);
+      }
+      
       // Make sure response.data.url exists before redirecting
       if (!response.data?.url) {
         throw new Error("Invalid response from server. Missing checkout URL.");
@@ -195,7 +207,17 @@ const Settings = () => {
       window.location.href = response.data.url;
     } catch (error) {
       console.error("Checkout error:", error);
-      setError(`Failed to start checkout process: ${error.message || "Unknown error"}. This may happen if your Stripe account is in test mode and you're using live keys, or vice versa.`);
+      
+      let errorMessage = error.message || "Unknown error";
+      
+      // Set a user-friendly error message
+      setError(`Failed to start checkout process: ${errorMessage}. This may happen if your Stripe account is in test mode and you're using live keys, or vice versa.`);
+      
+      // Set debug info if available
+      if (error.details) {
+        setDebugInfo(error.details);
+      }
+      
       setCheckoutLoading(false);
       toast({
         variant: "destructive",
@@ -275,6 +297,16 @@ const Settings = () => {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Error</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            
+            {debugInfo && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Debug Information</AlertTitle>
+                <AlertDescription className="whitespace-pre-wrap overflow-auto max-h-32">
+                  {debugInfo}
+                </AlertDescription>
               </Alert>
             )}
             

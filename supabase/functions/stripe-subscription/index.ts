@@ -1,15 +1,18 @@
-
 // Follow us: https://twitter.com/supabase
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { corsHeaders } from "../_shared/cors.ts"
 import Stripe from 'https://esm.sh/stripe@12.0.0?target=deno'
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
-  // This is necessary to use the Fetch API rather than relying on the Node http package
+// Initialize Stripe with more detailed error logging
+const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
+console.log(`Stripe key exists: ${!!stripeKey}`);
+console.log(`Stripe key type: ${stripeKey ? (stripeKey.startsWith('sk_test') ? 'test' : 'live') : 'undefined'}`);
+
+const stripe = new Stripe(stripeKey ?? '', {
   apiVersion: '2023-10-16',
   httpClient: Stripe.createFetchHttpClient(),
-})
+});
 
 console.log("Stripe Edge Function Initialized")
 
@@ -24,6 +27,7 @@ serve(async (req) => {
     const path = requestUrl.pathname.split('/').pop()
 
     console.log(`Request received: ${req.method} ${path}`)
+    console.log(`Request URL: ${req.url}`)
 
     // Customer Portal endpoint
     if (path === 'customer-portal') {
@@ -32,6 +36,8 @@ serve(async (req) => {
 
     // Main subscription endpoint (default)
     const { user_id, return_url } = await req.json()
+
+    console.log(`Request data: user_id=${user_id}, return_url=${return_url}`)
 
     if (!user_id) {
       throw new Error('user_id is required')
@@ -47,35 +53,42 @@ serve(async (req) => {
       throw new Error('STRIPE_EMPLOYER_PRICE_ID is not configured in environment variables')
     }
 
+    console.log(`Price ID exists: ${!!priceId}`)
+    console.log(`Price ID type: ${priceId ? (priceId.startsWith('price_test') ? 'test' : 'live') : 'undefined'}`)
     console.log(`Creating checkout session for user: ${user_id}, priceId: ${priceId}`)
 
-    // Create a checkout session
-    const session = await stripe.checkout.sessions.create({
-      line_items: [
+    try {
+      // Create a checkout session
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: 'subscription',
+        success_url: `${return_url}?success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${return_url}?success=false`,
+        client_reference_id: user_id,
+        customer_email: user_id, // Using email as identifier
+      })
+
+      console.log(`Checkout session created: ${session.id}`)
+
+      return new Response(
+        JSON.stringify({ url: session.url }),
         {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      mode: 'subscription',
-      success_url: `${return_url}?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${return_url}?success=false`,
-      client_reference_id: user_id,
-      customer_email: user_id, // Using email as identifier
-    })
-
-    console.log(`Checkout session created: ${session.id}`)
-
-    return new Response(
-      JSON.stringify({ url: session.url }),
-      {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
-      }
-    )
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+    } catch (stripeError) {
+      console.error(`Stripe API Error: ${JSON.stringify(stripeError)}`)
+      throw new Error(`Stripe API Error: ${stripeError.message || 'Unknown Stripe error'}. This may happen if your Stripe account is in ${stripeKey && stripeKey.startsWith('sk_test') ? 'test' : 'live'} mode and your price ID is in ${priceId && priceId.startsWith('price_test') ? 'test' : 'live'} mode.`)
+    }
   } catch (error) {
     console.error(`Error in Stripe checkout: ${error.message}`)
     console.error(error)
@@ -90,6 +103,9 @@ serve(async (req) => {
     } else if (error.message.includes('API key')) {
       errorMessage = 'Invalid Stripe API key. Check if your API key is valid and matches the expected mode (test/live).'
       statusCode = 401
+    } else if (error.message.includes('Stripe API Error')) {
+      // Keep original error message for Stripe API errors
+      statusCode = 400
     }
     
     return new Response(
