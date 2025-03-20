@@ -31,7 +31,69 @@ const Settings = () => {
   const [showSubscriptionDialog, setShowSubscriptionDialog] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [manageSubscriptionLoading, setManageSubscriptionLoading] = useState(false);
+  const [stripeRedirectHandled, setStripeRedirectHandled] = useState(false);
 
+  // Handle Stripe redirect on component mount
+  useEffect(() => {
+    const handleStripeRedirect = async () => {
+      const url = new URL(window.location.href);
+      const success = url.searchParams.get('success');
+      const sessionId = url.searchParams.get('session_id');
+      
+      if (success === 'true' && sessionId) {
+        // Clear the URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Refresh the profile to get updated subscription status
+        if (user) {
+          try {
+            const { data, error } = await supabase
+              .from("profiles")
+              .select("role, subscription_status, subscription_id")
+              .eq("id", user.id)
+              .single();
+            
+            if (error) throw error;
+            
+            if (data) {
+              setProfile({
+                role: data.role || "applicant",
+                subscription_status: data.subscription_status,
+                subscription_id: data.subscription_id
+              });
+              
+              toast({
+                title: "Subscription Active",
+                description: "Your employer subscription is now active. You can post unlimited job listings.",
+              });
+            }
+          } catch (error) {
+            console.error("Error fetching updated profile:", error);
+          }
+        }
+      } else if (success === 'false') {
+        // Subscription was not completed
+        toast({
+          variant: "destructive",
+          title: "Subscription Not Completed",
+          description: "Your subscription was not completed. You remain on the free plan.",
+        });
+        
+        // Clear the URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      
+      // Mark redirect as handled
+      setStripeRedirectHandled(true);
+    };
+    
+    // Only handle redirect if not already handled
+    if (!stripeRedirectHandled) {
+      handleStripeRedirect();
+    }
+  }, [user, toast, stripeRedirectHandled]);
+
+  // Load user profile
   useEffect(() => {
     if (!user) {
       navigate("/auth");
@@ -180,60 +242,6 @@ const Settings = () => {
       </div>
     );
   }
-
-  // Check if we've returned from Stripe checkout
-  useEffect(() => {
-    const handleStripeRedirect = async () => {
-      const url = new URL(window.location.href);
-      const success = url.searchParams.get('success');
-      const sessionId = url.searchParams.get('session_id');
-      
-      if (success === 'true' && sessionId) {
-        // Clear the URL parameters
-        window.history.replaceState({}, document.title, window.location.pathname);
-        
-        // Refresh the profile to get updated subscription status
-        if (user) {
-          try {
-            const { data, error } = await supabase
-              .from("profiles")
-              .select("role, subscription_status, subscription_id")
-              .eq("id", user.id)
-              .single();
-            
-            if (error) throw error;
-            
-            if (data) {
-              setProfile({
-                role: data.role || "applicant",
-                subscription_status: data.subscription_status,
-                subscription_id: data.subscription_id
-              });
-              
-              toast({
-                title: "Subscription Active",
-                description: "Your employer subscription is now active. You can post unlimited job listings.",
-              });
-            }
-          } catch (error) {
-            console.error("Error fetching updated profile:", error);
-          }
-        }
-      } else if (success === 'false') {
-        // Subscription was not completed
-        toast({
-          variant: "destructive",
-          title: "Subscription Not Completed",
-          description: "Your subscription was not completed. You remain on the free plan.",
-        });
-        
-        // Clear the URL parameters
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
-    };
-    
-    handleStripeRedirect();
-  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
