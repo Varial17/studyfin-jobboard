@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,7 @@ const ZohoAdmin = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [recentUsers, setRecentUsers] = useState<Array<{id: string, created_at: string, full_name: string, email: string}>>([]);
+  const [recentUsers, setRecentUsers] = useState<Array<{id: string, created_at: string, full_name: string | null}>>([]);
 
   useEffect(() => {
     const checkUserRole = async () => {
@@ -65,9 +64,10 @@ const ZohoAdmin = () => {
         }
 
         // Fetch most recent users
+        // We need to join with auth.users to get email since it's not in profiles table
         const { data: usersData, error: usersError } = await supabase
           .from('profiles')
-          .select('id, created_at, full_name, email')
+          .select('id, created_at, full_name')
           .eq('role', 'applicant')
           .order('created_at', { ascending: false })
           .limit(5);
@@ -214,7 +214,6 @@ const ZohoAdmin = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
                       <TableHead>Registration Date</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -223,13 +222,12 @@ const ZohoAdmin = () => {
                       recentUsers.map((user) => (
                         <TableRow key={user.id}>
                           <TableCell className="font-medium">{user.full_name || "N/A"}</TableCell>
-                          <TableCell>{user.email || "N/A"}</TableCell>
                           <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={3} className="text-center py-4">No users found</TableCell>
+                        <TableCell colSpan={2} className="text-center py-4">No users found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
