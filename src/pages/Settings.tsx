@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Save, CreditCard, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { PricingSectionDemo } from "@/components/ui/pricing-section-demo";
 
 const Settings = () => {
   const { user } = useAuth();
@@ -385,6 +386,14 @@ const Settings = () => {
                 </Button>
               </CardFooter>
             </Card>
+
+            {/* Show pricing section when user doesn't have an active subscription */}
+            {profile.subscription_status !== "active" && (
+              <div className="mt-8">
+                <h3 className="text-xl font-bold mb-4">Upgrade Your Account</h3>
+                <PricingSectionDemo />
+              </div>
+            )}
           </div>
         </div>
       </div>

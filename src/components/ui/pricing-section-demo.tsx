@@ -8,10 +8,10 @@ const defaultTiers = [
   {
     name: "Starter",
     price: {
-      monthly: 15,
-      yearly: 144,
+      monthly: 0,
+      yearly: 0,
     },
-    description: "Perfect for individuals and small projects",
+    description: "Basic features for job seekers",
     icon: (
       <div className="relative">
         <div className="absolute inset-0 bg-gradient-to-r from-gray-500/30 to-gray-500/30 blur-2xl rounded-full" />
@@ -20,13 +20,13 @@ const defaultTiers = [
     ),
     features: [
       {
-        name: "Basic Analytics",
-        description: "Track essential metrics and user behavior",
+        name: "Job Search",
+        description: "Browse and apply to job listings",
         included: true,
       },
       {
-        name: "5 Team Members",
-        description: "Collaborate with a small team",
+        name: "Profile Creation",
+        description: "Create and manage your profile",
         included: true,
       },
       {
@@ -35,19 +35,19 @@ const defaultTiers = [
         included: true,
       },
       {
-        name: "API Access",
-        description: "Limited API access for basic integrations",
+        name: "Post Jobs",
+        description: "Post job listings as an employer",
         included: false,
       },
     ],
   },
   {
-    name: "Pro",
+    name: "Employer",
     price: {
-      monthly: 49,
-      yearly: 470,
+      monthly: 29,
+      yearly: 290,
     },
-    description: "Ideal for growing teams and businesses",
+    description: "Everything you need as an employer",
     highlight: true,
     badge: "Most Popular",
     icon: (
@@ -57,13 +57,13 @@ const defaultTiers = [
     ),
     features: [
       {
-        name: "Advanced Analytics",
-        description: "Deep insights and custom reports",
+        name: "Unlimited Job Postings",
+        description: "Post as many jobs as you need",
         included: true,
       },
       {
-        name: "Unlimited Team Members",
-        description: "Scale your team without limits",
+        name: "Applicant Management",
+        description: "Track and manage applications",
         included: true,
       },
       {
@@ -72,8 +72,8 @@ const defaultTiers = [
         included: true,
       },
       {
-        name: "Full API Access",
-        description: "Complete API access with higher rate limits",
+        name: "Advanced Analytics",
+        description: "Deep insights into your job listings",
         included: true,
       },
     ],
