@@ -41,7 +41,7 @@ const defaultTiers = [
       },
     ],
     buttonText: "Select Free Plan",
-    buttonAction: "selectFree"
+    buttonAction: "selectFree" as const
   },
   {
     name: "Employer",
@@ -80,7 +80,7 @@ const defaultTiers = [
       },
     ],
     buttonText: "Subscribe Now",
-    buttonAction: "checkout"
+    buttonAction: "checkout" as const
   },
 ]
 

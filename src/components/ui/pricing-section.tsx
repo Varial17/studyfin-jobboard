@@ -4,7 +4,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRightIcon, CheckIcon } from "@radix-ui/react-icons"
+import { CheckIcon, ChevronRightIcon } from "@radix-ui/react-icons"
 import { cn } from "@/lib/utils"
 import { useNavigate } from "react-router-dom"
 
@@ -191,7 +191,7 @@ function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
                     {tier.buttonText || (tier.highlight ? 'Subscribe Now' : 'Get Started')}
-                    <ArrowRightIcon className="w-4 h-4" />
+                    <ChevronRightIcon className="w-4 h-4" />
                   </span>
                 </Button>
               </div>
