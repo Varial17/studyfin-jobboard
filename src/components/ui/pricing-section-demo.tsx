@@ -14,8 +14,8 @@ const defaultTiers = [
     description: "Basic features for job seekers",
     icon: (
       <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-gray-500/30 to-gray-500/30 blur-2xl rounded-full" />
-        <Zap className="w-7 h-7 relative z-10 text-gray-500 dark:text-gray-400 animate-[float_3s_ease-in-out_infinite]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 to-blue-500/30 blur-2xl rounded-full" />
+        <Zap className="w-7 h-7 relative z-10 text-primary dark:text-primary animate-[float_3s_ease-in-out_infinite]" />
       </div>
     ),
     features: [
@@ -52,7 +52,7 @@ const defaultTiers = [
     badge: "Most Popular",
     icon: (
       <div className="relative">
-        <ArrowDownToDot className="w-7 h-7 relative z-10" />
+        <ArrowDownToDot className="w-7 h-7 relative z-10 text-primary" />
       </div>
     ),
     features: [

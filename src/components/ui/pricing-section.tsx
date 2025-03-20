@@ -38,26 +38,23 @@ function PricingSection({ tiers, className }: PricingSectionProps) {
     default: cn(
       "h-12 bg-white dark:bg-zinc-900",
       "hover:bg-zinc-50 dark:hover:bg-zinc-800",
-      "text-zinc-900 dark:text-zinc-100",
-      "border border-zinc-200 dark:border-zinc-800",
-      "hover:border-zinc-300 dark:hover:border-zinc-700",
+      "text-primary border border-zinc-200 dark:border-zinc-800",
+      "hover:border-primary/60 dark:hover:border-primary/60",
       "shadow-sm hover:shadow-md",
       "text-sm font-medium",
     ),
     highlight: cn(
-      "h-12 bg-zinc-900 dark:bg-zinc-100",
-      "hover:bg-zinc-800 dark:hover:bg-zinc-300",
-      "text-white dark:text-zinc-900",
-      "shadow-[0_1px_15px_rgba(0,0,0,0.1)]",
-      "hover:shadow-[0_1px_20px_rgba(0,0,0,0.15)]",
+      "h-12 bg-primary hover:bg-primary/90",
+      "text-white",
+      "shadow-[0_1px_15px_rgba(14,165,233,0.3)]",
+      "hover:shadow-[0_1px_20px_rgba(14,165,233,0.4)]",
       "font-semibold text-base",
     ),
   }
 
   const badgeStyles = cn(
     "px-4 py-1.5 text-sm font-medium",
-    "bg-zinc-900 dark:bg-zinc-100",
-    "text-white dark:text-zinc-900",
+    "bg-secondary text-white",
     "border-none shadow-lg",
   )
 
@@ -83,8 +80,8 @@ function PricingSection({ tiers, className }: PricingSectionProps) {
                 className={cn(
                   "px-8 py-2.5 text-sm font-medium rounded-full transition-all duration-300",
                   (period === "Yearly") === isYearly
-                    ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-lg"
-                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100",
+                    ? "bg-primary text-white shadow-lg"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-primary dark:hover:text-primary",
                 )}
               >
                 {period}
@@ -102,11 +99,11 @@ function PricingSection({ tiers, className }: PricingSectionProps) {
                 "rounded-3xl transition-all duration-300",
                 "flex flex-col",
                 tier.highlight
-                  ? "bg-gradient-to-b from-zinc-100/80 to-transparent dark:from-zinc-400/[0.15]"
+                  ? "bg-gradient-to-b from-blue-50/80 to-transparent dark:from-blue-400/[0.15]"
                   : "bg-white dark:bg-zinc-800/50",
                 "border",
                 tier.highlight
-                  ? "border-zinc-400/50 dark:border-zinc-400/20 shadow-xl"
+                  ? "border-primary/30 dark:border-primary/20 shadow-xl"
                   : "border-zinc-200 dark:border-zinc-700 shadow-md",
                 "hover:translate-y-0 hover:shadow-lg",
               )}
@@ -123,7 +120,7 @@ function PricingSection({ tiers, className }: PricingSectionProps) {
                     className={cn(
                       "p-3 rounded-xl",
                       tier.highlight
-                        ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+                        ? "bg-blue-100 dark:bg-blue-900/30 text-primary dark:text-primary"
                         : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400",
                     )}
                   >
@@ -155,7 +152,7 @@ function PricingSection({ tiers, className }: PricingSectionProps) {
                         className={cn(
                           "mt-1 p-0.5 rounded-full transition-colors duration-200",
                           feature.included
-                            ? "text-emerald-600 dark:text-emerald-400"
+                            ? "text-primary dark:text-primary"
                             : "text-zinc-400 dark:text-zinc-600",
                         )}
                       >
