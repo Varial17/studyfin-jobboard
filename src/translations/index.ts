@@ -128,6 +128,7 @@ export const translations = {
     submitting: "Submitting...",
     submit: "Submit",
     applyingFor: "Applying for",
+    coverLetterHelp: "Write a compelling cover letter to stand out to employers.",
 
     // Navbar translations
     language: "Language",
@@ -270,6 +271,7 @@ export const translations = {
     submitting: "提交中...",
     submit: "提交",
     applyingFor: "申请职位",
+    coverLetterHelp: "撰写一封引人注目的求职信，以在雇主面前脱颖而出。",
 
     // Navbar translations
     language: "语言",
