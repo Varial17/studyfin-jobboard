@@ -10,6 +10,7 @@ import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -20,17 +21,19 @@ import {
 } from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
 import type { Database } from "@/integrations/supabase/types";
+import { JobDetails } from "@/components/JobDetails";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 
 const JobDetail = () => {
-  const { jobId } = useParams();
+  const { id } = useParams(); // Changed from jobId to id to match route parameter
   const { t } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [showRoleDialog, setShowRoleDialog] = useState(false);
+  const [isApplyDialogOpen, setIsApplyDialogOpen] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,11 +44,11 @@ const JobDetail = () => {
             .from("profiles")
             .select("*")
             .eq("id", user.id)
-            .single();
+            .maybeSingle(); // Using maybeSingle instead of single
 
           if (error) throw error;
           // Handle case where role property might not exist yet
-          setUserRole((data as any).role || 'applicant');
+          setUserRole((data as any)?.role || 'applicant');
         } catch (error) {
           console.error("Error fetching user role:", error);
         }
@@ -55,18 +58,27 @@ const JobDetail = () => {
     }
   }, [user]);
 
-  const { data: job, isLoading } = useQuery({
-    queryKey: ["job", jobId],
+  const { data: job, isLoading, error } = useQuery({
+    queryKey: ["job", id],
     queryFn: async () => {
+      console.log("Fetching job with ID:", id);
+      if (!id) throw new Error("Job ID is required");
+      
       const { data, error } = await supabase
         .from("jobs")
         .select("*")
-        .eq("id", jobId)
-        .single();
+        .eq("id", id)
+        .maybeSingle(); // Using maybeSingle instead of single
 
-      if (error) throw error;
-      return data as Job;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
+      
+      console.log("Job data:", data);
+      return data as Job | null;
     },
+    enabled: !!id, // Only run query if ID exists
   });
 
   if (isLoading) {
@@ -74,7 +86,55 @@ const JobDetail = () => {
       <div className="min-h-screen bg-gray-50">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center">Loading...</div>
+          <Card className="max-w-4xl mx-auto">
+            <CardHeader>
+              <div className="space-y-4">
+                <Skeleton className="h-8 w-3/4" />
+                <Skeleton className="h-6 w-1/2" />
+                <div className="flex items-center">
+                  <Skeleton className="h-4 w-24 mr-2" />
+                </div>
+                <div className="flex gap-2">
+                  <Skeleton className="h-6 w-20" />
+                  <Skeleton className="h-6 w-24" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <Skeleton className="h-6 w-40 mb-2" />
+                <Skeleton className="h-4 w-full my-1" />
+                <Skeleton className="h-4 w-full my-1" />
+                <Skeleton className="h-4 w-3/4 my-1" />
+              </div>
+              <div>
+                <Skeleton className="h-6 w-40 mb-2" />
+                <Skeleton className="h-4 w-full my-1" />
+                <Skeleton className="h-4 w-full my-1" />
+                <Skeleton className="h-4 w-2/3 my-1" />
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Skeleton className="h-10 w-full" />
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Error Loading Job</h2>
+            <p className="mb-4">We encountered an error while loading this job.</p>
+            <Button asChild>
+              <Link to="/jobs">Go Back to Jobs</Link>
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -85,7 +145,13 @@ const JobDetail = () => {
       <div className="min-h-screen bg-gray-50">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center">Job not found</div>
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-4">Job Not Found</h2>
+            <p className="mb-4">The job listing you're looking for doesn't exist or has been removed.</p>
+            <Button asChild>
+              <Link to="/jobs">Browse All Jobs</Link>
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -102,8 +168,8 @@ const JobDetail = () => {
       return;
     }
     
-    // Use regular navigation instead of opening in new tab
-    navigate(`/jobs/${jobId}/apply`);
+    // Open the apply dialog
+    setIsApplyDialogOpen(true);
   };
 
   return (
@@ -161,6 +227,13 @@ const JobDetail = () => {
           </CardFooter>
         </Card>
       </div>
+
+      {/* Apply Dialog */}
+      <JobDetails
+        job={job}
+        isOpen={isApplyDialogOpen}
+        onClose={() => setIsApplyDialogOpen(false)}
+      />
 
       {/* Login Dialog */}
       <Dialog open={showLoginDialog} onOpenChange={setShowLoginDialog}>
