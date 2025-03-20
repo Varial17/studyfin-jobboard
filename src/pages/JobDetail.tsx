@@ -86,36 +86,51 @@ const JobDetail = () => {
       <div className="min-h-screen bg-gray-50">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
-          <Card className="max-w-4xl mx-auto">
-            <CardHeader>
+          <Card className="max-w-4xl mx-auto overflow-hidden">
+            <CardHeader className="animate-pulse">
               <div className="space-y-4">
-                <Skeleton className="h-8 w-3/4" />
-                <Skeleton className="h-6 w-1/2" />
-                <div className="flex items-center">
-                  <Skeleton className="h-4 w-24 mr-2" />
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2 w-2/3">
+                    <Skeleton className="h-8 w-full rounded-md" />
+                    <Skeleton className="h-6 w-3/4 rounded-md" />
+                  </div>
+                  <div className="flex gap-2">
+                    <Skeleton className="h-10 w-20 rounded-md" />
+                    <Skeleton className="h-10 w-20 rounded-md" />
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Skeleton className="h-6 w-20" />
-                  <Skeleton className="h-6 w-24" />
+                <div className="flex items-center">
+                  <Skeleton className="h-4 w-4 mr-2 rounded-full" />
+                  <Skeleton className="h-4 w-32 rounded-md" />
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Skeleton className="h-6 w-24 rounded-full" />
+                  <Skeleton className="h-6 w-32 rounded-full" />
+                  <Skeleton className="h-6 w-40 rounded-full" />
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 animate-pulse">
               <div>
-                <Skeleton className="h-6 w-40 mb-2" />
-                <Skeleton className="h-4 w-full my-1" />
-                <Skeleton className="h-4 w-full my-1" />
-                <Skeleton className="h-4 w-3/4 my-1" />
+                <Skeleton className="h-6 w-40 mb-2 rounded-md" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full rounded-md" />
+                  <Skeleton className="h-4 w-full rounded-md" />
+                  <Skeleton className="h-4 w-full rounded-md" />
+                  <Skeleton className="h-4 w-3/4 rounded-md" />
+                </div>
               </div>
               <div>
-                <Skeleton className="h-6 w-40 mb-2" />
-                <Skeleton className="h-4 w-full my-1" />
-                <Skeleton className="h-4 w-full my-1" />
-                <Skeleton className="h-4 w-2/3 my-1" />
+                <Skeleton className="h-6 w-40 mb-2 rounded-md" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full rounded-md" />
+                  <Skeleton className="h-4 w-full rounded-md" />
+                  <Skeleton className="h-4 w-2/3 rounded-md" />
+                </div>
               </div>
             </CardContent>
-            <CardFooter>
-              <Skeleton className="h-10 w-full" />
+            <CardFooter className="animate-pulse">
+              <Skeleton className="h-10 w-full rounded-md" />
             </CardFooter>
           </Card>
         </div>
