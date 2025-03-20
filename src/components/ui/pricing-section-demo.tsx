@@ -40,6 +40,8 @@ const defaultTiers = [
         included: false,
       },
     ],
+    buttonText: "Select Free Plan",
+    buttonAction: "selectFree"
   },
   {
     name: "Employer",
@@ -77,6 +79,8 @@ const defaultTiers = [
         included: true,
       },
     ],
+    buttonText: "Subscribe Now",
+    buttonAction: "checkout"
   },
 ]
 

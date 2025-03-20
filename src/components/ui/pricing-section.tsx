@@ -4,8 +4,9 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Check, ArrowRight } from "lucide-react"
+import { ArrowRightIcon, CheckIcon } from "@radix-ui/react-icons"
 import { cn } from "@/lib/utils"
+import { useNavigate } from "react-router-dom"
 
 interface Feature {
   name: string
@@ -24,15 +25,25 @@ interface PricingTier {
   highlight?: boolean
   badge?: string
   icon: React.ReactNode
+  buttonText?: string
+  buttonAction?: "selectFree" | "checkout"
 }
 
 interface PricingSectionProps {
   tiers: PricingTier[]
   className?: string
+  onAction?: (action: string, tier: PricingTier) => void
 }
 
-function PricingSection({ tiers, className }: PricingSectionProps) {
+function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
   const [isYearly, setIsYearly] = useState(false)
+  const navigate = useNavigate()
+
+  const handleAction = (tier: PricingTier) => {
+    if (onAction && tier.buttonAction) {
+      onAction(tier.buttonAction, tier)
+    }
+  }
 
   const buttonStyles = {
     default: cn(
@@ -62,16 +73,13 @@ function PricingSection({ tiers, className }: PricingSectionProps) {
     <section
       className={cn(
         "relative bg-background text-foreground",
-        "py-12 px-4 md:py-24 lg:py-32",
+        "py-6 md:py-12",
         "overflow-hidden",
         className,
       )}
     >
       <div className="w-full max-w-5xl mx-auto">
-        <div className="flex flex-col items-center gap-4 mb-12">
-          <h2 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-            Simple, transparent pricing
-          </h2>
+        <div className="flex flex-col items-center gap-4 mb-8">
           <div className="inline-flex items-center p-1.5 bg-white dark:bg-zinc-800/50 rounded-full border border-zinc-200 dark:border-zinc-700 shadow-sm">
             {["Monthly", "Yearly"].map((period) => (
               <button
@@ -156,7 +164,7 @@ function PricingSection({ tiers, className }: PricingSectionProps) {
                             : "text-zinc-400 dark:text-zinc-600",
                         )}
                       >
-                        <Check className="w-4 h-4" />
+                        <CheckIcon className="w-4 h-4" />
                       </div>
                       <div>
                         <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
@@ -179,19 +187,11 @@ function PricingSection({ tiers, className }: PricingSectionProps) {
                       ? buttonStyles.highlight
                       : buttonStyles.default,
                   )}
+                  onClick={() => handleAction(tier)}
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
-                    {tier.highlight ? (
-                      <>
-                        Buy now
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    ) : (
-                      <>
-                        Get started
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
+                    {tier.buttonText || (tier.highlight ? 'Subscribe Now' : 'Get Started')}
+                    <ArrowRightIcon className="w-4 h-4" />
                   </span>
                 </Button>
               </div>

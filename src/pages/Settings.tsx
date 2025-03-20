@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,9 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { ProfileSidebar } from "@/components/ProfileSidebar";
 import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { Save, CreditCard, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -35,7 +32,6 @@ const Settings = () => {
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
-  // Handle Stripe redirect on component mount
   useEffect(() => {
     const handleStripeRedirect = async () => {
       const url = new URL(window.location.href);
@@ -43,10 +39,8 @@ const Settings = () => {
       const sessionId = url.searchParams.get('session_id');
       
       if (success === 'true' && sessionId) {
-        // Clear the URL parameters
         window.history.replaceState({}, document.title, window.location.pathname);
         
-        // Refresh the profile to get updated subscription status
         if (user) {
           try {
             const { data, error } = await supabase
@@ -75,18 +69,15 @@ const Settings = () => {
           }
         }
       } else if (success === 'false') {
-        // Subscription was not completed
         toast({
           variant: "destructive",
           title: "Subscription Not Completed",
           description: "Your subscription was not completed. You remain on the free plan.",
         });
         
-        // Clear the URL parameters
         window.history.replaceState({}, document.title, window.location.pathname);
       }
       
-      // Mark redirect as handled
       setStripeRedirectHandled(true);
     };
     
@@ -95,7 +86,6 @@ const Settings = () => {
     }
   }, [user, toast, stripeRedirectHandled, t]);
 
-  // Load user profile
   useEffect(() => {
     if (!user) {
       navigate("/auth");
@@ -138,7 +128,6 @@ const Settings = () => {
   const handleSave = async () => {
     if (!user) return;
 
-    // If user is trying to switch to employer role and doesn't have an active subscription
     if (profile.role === "employer" && profile.subscription_status !== "active") {
       setShowSubscriptionDialog(true);
       return;
@@ -192,29 +181,24 @@ const Settings = () => {
         throw new Error(response.error.message || response.error || "Failed to start checkout process");
       }
       
-      // Debug information
       console.log("Response from Stripe:", response);
       
       if (response.data && response.data.error) {
         throw new Error(response.data.error);
       }
       
-      // Make sure response.data.url exists before redirecting
       if (!response.data?.url) {
         throw new Error("Invalid response from server. Missing checkout URL.");
       }
       
-      // Redirect to Stripe Checkout
       window.location.href = response.data.url;
     } catch (error) {
       console.error("Checkout error:", error);
       
       let errorMessage = error.message || "Unknown error";
       
-      // Set a user-friendly error message
       setError(`Failed to start checkout process: ${errorMessage}. This may happen if your Stripe account is in test mode and you're using live keys, or vice versa.`);
       
-      // Set debug info if available
       if (error.details) {
         setDebugInfo(error.details);
       }
@@ -249,7 +233,6 @@ const Settings = () => {
         throw new Error("Invalid response from server. Missing portal URL.");
       }
       
-      // Redirect to Stripe Customer Portal
       window.location.href = response.data.url;
     } catch (error) {
       console.error("Manage subscription error:", error);
@@ -264,7 +247,6 @@ const Settings = () => {
   };
 
   const handleRoleChange = (value) => {
-    // If changing to employer and no active subscription, don't update yet
     if (value === "employer" && profile.subscription_status !== "active") {
       setShowSubscriptionDialog(true);
     } else {
@@ -272,9 +254,13 @@ const Settings = () => {
     }
   };
 
+  const handleEmployerSelect = () => {
+    setProfile({ ...profile, role: "employer" });
+    setShowSubscriptionDialog(true);
+  };
+
   const closeDialog = () => {
     setShowSubscriptionDialog(false);
-    // Reset role selection if they cancel
     setProfile(prev => ({ ...prev, role: "applicant" }));
   };
 
@@ -311,94 +297,63 @@ const Settings = () => {
               </Alert>
             )}
             
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("accountSettings")}</CardTitle>
-                <CardDescription>{t("manageAccountSettings")}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="font-medium text-base">{t("accountType")}</h3>
-                  
-                  {profile.subscription_status === "active" && (
-                    <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-md flex items-center space-x-2">
-                      <CreditCard className="h-5 w-5" />
-                      <span>You have an active employer subscription</span>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleManageSubscription}
-                        disabled={manageSubscriptionLoading}
-                        className="ml-auto"
-                      >
-                        {manageSubscriptionLoading ? "Loading..." : "Manage Subscription"}
-                      </Button>
-                    </div>
-                  )}
-                  
-                  {profile.subscription_status === "past_due" && (
-                    <div className="mb-4 p-3 bg-amber-50 text-amber-700 rounded-md flex items-center space-x-2">
-                      <AlertCircle className="h-5 w-5" />
-                      <span>Your subscription payment is past due. Please update your payment method.</span>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleManageSubscription}
-                        disabled={manageSubscriptionLoading}
-                        className="ml-auto"
-                      >
-                        {manageSubscriptionLoading ? "Loading..." : "Update Payment"}
-                      </Button>
-                    </div>
-                  )}
-                  
-                  <RadioGroup
-                    value={profile.role}
-                    onValueChange={handleRoleChange}
-                    className="flex flex-col space-y-3"
+            {profile.subscription_status === "active" && (
+              <Card>
+                <CardContent className="pt-6 mt-2">
+                  <div className="p-3 bg-green-50 text-green-700 rounded-md flex items-center space-x-2">
+                    <CreditCard className="h-5 w-5" />
+                    <span>You have an active employer subscription</span>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleManageSubscription}
+                      disabled={manageSubscriptionLoading}
+                      className="ml-auto"
+                    >
+                      {manageSubscriptionLoading ? "Loading..." : "Manage Subscription"}
+                    </Button>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="flex items-center gap-2"
                   >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="applicant" id="applicant" />
-                      <Label htmlFor="applicant">{t("jobSeeker")}</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="employer" id="employer" />
-                      <Label htmlFor="employer">
-                        {t("employer")} 
-                        {profile.subscription_status !== "active" && (
-                          <span className="ml-2 text-sm text-muted-foreground">
-                            (Requires subscription - $29/month)
-                          </span>
-                        )}
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex items-center gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  {saving ? t("saving") : t("saveSettings")}
-                </Button>
-              </CardFooter>
-            </Card>
+                    <Save className="w-4 h-4" />
+                    {saving ? t("saving") : t("saveSettings")}
+                  </Button>
+                </CardFooter>
+              </Card>
+            )}
 
-            {/* Show pricing section when user doesn't have an active subscription */}
             {profile.subscription_status !== "active" && (
-              <div className="mt-8">
-                <h3 className="text-xl font-bold mb-4">Upgrade Your Account</h3>
+              <div>
+                <h2 className="text-2xl font-bold mb-2">Choose Your Account Type</h2>
+                <p className="text-muted-foreground mb-6">
+                  Select the account type that best suits your needs
+                </p>
+                
                 <PricingSectionDemo />
+                
+                <Card className="mt-8">
+                  <CardFooter className="justify-end pt-6">
+                    <Button
+                      onClick={handleSave}
+                      disabled={saving || profile.role === "employer"}
+                      className="flex items-center gap-2"
+                    >
+                      <Save className="w-4 h-4" />
+                      {saving ? t("saving") : "Save as Job Seeker"}
+                    </Button>
+                  </CardFooter>
+                </Card>
               </div>
             )}
           </div>
         </div>
       </div>
       
-      {/* Subscription Dialog */}
       <Dialog open={showSubscriptionDialog} onOpenChange={setShowSubscriptionDialog}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
