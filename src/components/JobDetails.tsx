@@ -77,22 +77,12 @@ export function JobDetails({ job, isOpen, onClose }: JobDetailsProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle className="text-2xl">{job.title}</DialogTitle>
+          <DialogTitle className="text-xl">{t("applyingFor")}: {job.title}</DialogTitle>
           <DialogDescription className="text-lg text-foreground">
             {job.company}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div>
-            <h3 className="font-semibold mb-2">{t("description")}</h3>
-            <p className="whitespace-pre-wrap">{job.description}</p>
-          </div>
-          {job.requirements && (
-            <div>
-              <h3 className="font-semibold mb-2">{t("requirements")}</h3>
-              <p className="whitespace-pre-wrap">{job.requirements}</p>
-            </div>
-          )}
           <div className="space-y-2">
             <h3 className="font-semibold">{t("coverLetter")}</h3>
             <Textarea
@@ -100,8 +90,9 @@ export function JobDetails({ job, isOpen, onClose }: JobDetailsProps) {
               value={coverLetter}
               onChange={(e) => setCoverLetter(e.target.value)}
               className="min-h-[200px]"
-              disabled={!user}
+              disabled={isSubmitting}
             />
+            <p className="text-sm text-muted-foreground">{t("coverLetterHelp")}</p>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>
@@ -109,7 +100,7 @@ export function JobDetails({ job, isOpen, onClose }: JobDetailsProps) {
             </Button>
             <Button
               onClick={handleApply}
-              disabled={isSubmitting || !user}
+              disabled={isSubmitting}
             >
               {isSubmitting ? t("submitting") : t("apply")}
             </Button>
@@ -119,4 +110,3 @@ export function JobDetails({ job, isOpen, onClose }: JobDetailsProps) {
     </Dialog>
   );
 }
-

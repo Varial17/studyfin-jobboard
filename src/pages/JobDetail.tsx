@@ -26,7 +26,7 @@ import { JobDetails } from "@/components/JobDetails";
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 
 const JobDetail = () => {
-  const { id } = useParams(); // Changed from jobId to id to match route parameter
+  const { id } = useParams();
   const { t } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -68,7 +68,7 @@ const JobDetail = () => {
         .from("jobs")
         .select("*")
         .eq("id", id)
-        .maybeSingle(); // Using maybeSingle instead of single
+        .maybeSingle();
 
       if (error) {
         console.error("Supabase error:", error);
@@ -78,7 +78,7 @@ const JobDetail = () => {
       console.log("Job data:", data);
       return data as Job | null;
     },
-    enabled: !!id, // Only run query if ID exists
+    enabled: !!id,
   });
 
   if (isLoading) {
@@ -183,7 +183,7 @@ const JobDetail = () => {
       return;
     }
     
-    // Open the apply dialog
+    // Open the apply dialog directly instead of showing the job details again
     setIsApplyDialogOpen(true);
   };
 
@@ -196,8 +196,8 @@ const JobDetail = () => {
             <div className="space-y-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <h1 className="text-2xl font-bold">{job.title}</h1>
-                  <p className="text-lg text-muted-foreground">{job.company}</p>
+                  <h1 className="text-2xl font-bold">{job?.title}</h1>
+                  <p className="text-lg text-muted-foreground">{job?.company}</p>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" asChild>
@@ -210,14 +210,14 @@ const JobDetail = () => {
               </div>
               <div className="flex items-center text-muted-foreground">
                 <MapPin className="w-4 h-4 mr-1" />
-                <span>{job.location}</span>
+                <span>{job?.location}</span>
               </div>
               <div className="flex gap-2 flex-wrap">
-                <Badge variant="secondary">{job.job_type}</Badge>
-                {job.salary_range && (
+                <Badge variant="secondary">{job?.job_type}</Badge>
+                {job?.salary_range && (
                   <Badge variant="secondary">{job.salary_range}</Badge>
                 )}
-                {job.visa_sponsorship && (
+                {job?.visa_sponsorship && (
                   <Badge className="bg-primary">{t("visaSponsorship")}</Badge>
                 )}
               </div>
@@ -226,9 +226,9 @@ const JobDetail = () => {
           <CardContent className="space-y-6">
             <div>
               <h2 className="text-lg font-semibold mb-2">{t("description")}</h2>
-              <p className="whitespace-pre-wrap">{job.description}</p>
+              <p className="whitespace-pre-wrap">{job?.description}</p>
             </div>
-            {job.requirements && (
+            {job?.requirements && (
               <div>
                 <h2 className="text-lg font-semibold mb-2">{t("requirements")}</h2>
                 <p className="whitespace-pre-wrap">{job.requirements}</p>
@@ -244,11 +244,13 @@ const JobDetail = () => {
       </div>
 
       {/* Apply Dialog */}
-      <JobDetails
-        job={job}
-        isOpen={isApplyDialogOpen}
-        onClose={() => setIsApplyDialogOpen(false)}
-      />
+      {job && (
+        <JobDetails
+          job={job}
+          isOpen={isApplyDialogOpen}
+          onClose={() => setIsApplyDialogOpen(false)}
+        />
+      )}
 
       {/* Login Dialog */}
       <Dialog open={showLoginDialog} onOpenChange={setShowLoginDialog}>
@@ -272,7 +274,7 @@ const JobDetail = () => {
                 navigate("/auth");
               }}
             >
-              {t("signup")}
+              {t("login")}
             </Button>
           </DialogFooter>
         </DialogContent>
