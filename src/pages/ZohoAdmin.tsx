@@ -9,6 +9,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { ProfileSidebar } from "@/components/ProfileSidebar";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { ExternalLink } from "lucide-react";
 
 // Admin email that's allowed to access Zoho features
 const ADMIN_EMAIL = "admin@yourdomain.com"; // Replace with your email
@@ -20,9 +23,9 @@ const ZohoAdmin = () => {
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; count?: number } | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [isZohoConnected, setIsZohoConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [recentUsers, setRecentUsers] = useState<Array<{id: string, created_at: string, full_name: string, email: string}>>([]);
 
   useEffect(() => {
     const checkUserRole = async () => {
@@ -50,7 +53,7 @@ const ZohoAdmin = () => {
         console.log("ZohoAdmin: Fetching profile for user", user.id);
         const { data, error } = await supabase
           .from('profiles')
-          .select('role, zoho_connected')
+          .select('role')
           .eq('id', user.id)
           .single();
 
@@ -61,25 +64,26 @@ const ZohoAdmin = () => {
           return;
         }
 
+        // Fetch most recent users
+        const { data: usersData, error: usersError } = await supabase
+          .from('profiles')
+          .select('id, created_at, full_name, email')
+          .eq('role', 'applicant')
+          .order('created_at', { ascending: false })
+          .limit(5);
+        
+        if (usersError) {
+          console.error('Error fetching users:', usersError);
+        } else {
+          setRecentUsers(usersData || []);
+        }
+
         console.log("ZohoAdmin: Profile data", data);
         setUserRole(data?.role || null);
-        setIsZohoConnected(data?.zoho_connected || false);
-        
-        // Redirect if not connected to Zoho
-        if (!data?.zoho_connected) {
-          console.log("ZohoAdmin: User not connected to Zoho, redirecting to Zoho integration");
-          toast({
-            title: "Not Connected",
-            description: "Please connect to Zoho CRM first",
-            variant: "destructive",
-          });
-          navigate('/profile/zoho');
-          return;
-        }
+        setLoading(false);
       } catch (error: any) {
         console.error('Error fetching user role:', error);
         setError(error.message);
-      } finally {
         setLoading(false);
       }
     };
@@ -165,8 +169,17 @@ const ZohoAdmin = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex gap-6">
           <ProfileSidebar />
-          <div className="flex-1 max-w-3xl">
-            <h1 className="text-2xl font-semibold mb-6">Zoho CRM Admin</h1>
+          <div className="flex-1 max-w-4xl">
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-2xl font-semibold">Zoho CRM Admin</h1>
+              <Button 
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={() => window.open('https://crm.zoho.com', '_blank')}
+              >
+                Open Zoho CRM <ExternalLink className="h-4 w-4" />
+              </Button>
+            </div>
             
             <Card className="mb-6">
               <CardHeader>
@@ -179,7 +192,7 @@ const ZohoAdmin = () => {
                 <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-900 mb-4">
                   <AlertTitle>Connected to Zoho CRM</AlertTitle>
                   <AlertDescription>
-                    <p>The system is connected to Zoho CRM and will automatically sync:</p>
+                    <p>The system is connected to Zoho CRM and automatically syncs:</p>
                     <ul className="list-disc ml-6 mt-2">
                       <li>New user registrations</li>
                       <li>Job applications</li>
@@ -189,11 +202,59 @@ const ZohoAdmin = () => {
               </CardContent>
             </Card>
             
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Recent Users</CardTitle>
+                <CardDescription>
+                  The most recent users who have registered in the system and been synced to Zoho CRM
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Registration Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recentUsers.length > 0 ? (
+                      recentUsers.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">{user.full_name || "N/A"}</TableCell>
+                          <TableCell>{user.email || "N/A"}</TableCell>
+                          <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center py-4">No users found</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+                <Pagination className="mt-4">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious href="#" />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationLink href="#" isActive>1</PaginationLink>
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationNext href="#" />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </CardContent>
+            </Card>
+            
             <Card>
               <CardHeader>
                 <CardTitle>Sync All Users to Zoho CRM</CardTitle>
                 <CardDescription>
-                  This will add all existing users to your Zoho CRM as leads.
+                  This will add all existing users to your Zoho CRM as leads, ensuring your CRM has a complete record.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -211,8 +272,8 @@ const ZohoAdmin = () => {
                   </Alert>
                 )}
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Warning: This operation might take some time depending on the number of users in the system.
-                  Running this multiple times may create duplicate leads in Zoho CRM.
+                  This is useful if you've just set up the integration or suspect some users weren't synced automatically.
+                  Running this multiple times may create duplicate leads in Zoho CRM if deduplication is not enabled.
                 </p>
               </CardContent>
               <CardFooter>
