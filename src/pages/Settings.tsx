@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,8 +12,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { useToast } from "@/components/ui/use-toast";
 import { Save, CreditCard, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const Settings = () => {
@@ -65,7 +62,7 @@ const Settings = () => {
               });
               
               toast({
-                title: "Subscription Active",
+                title: t("success"),
                 description: "Your employer subscription is now active. You can post unlimited job listings.",
               });
             }
@@ -90,11 +87,10 @@ const Settings = () => {
       setStripeRedirectHandled(true);
     };
     
-    // Only handle redirect if not already handled
     if (!stripeRedirectHandled) {
       handleStripeRedirect();
     }
-  }, [user, toast, stripeRedirectHandled]);
+  }, [user, toast, stripeRedirectHandled, t]);
 
   // Load user profile
   useEffect(() => {
@@ -181,13 +177,13 @@ const Settings = () => {
     try {
       const response = await supabase.functions.invoke('stripe-subscription', {
         body: JSON.stringify({
-          user_id: user.id,
+          user_id: user.email,
           return_url: `${window.location.origin}/settings`
         })
       });
 
       if (response.error) {
-        throw new Error(response.error.message || "Failed to start checkout process");
+        throw new Error(response.error.message || response.error || "Failed to start checkout process");
       }
       
       // Make sure response.data.url exists before redirecting
@@ -199,7 +195,7 @@ const Settings = () => {
       window.location.href = response.data.url;
     } catch (error) {
       console.error("Checkout error:", error);
-      setError("Failed to start checkout process. The server may be missing Stripe configuration.");
+      setError(`Failed to start checkout process: ${error.message || "Unknown error"}. This may happen if your Stripe account is in test mode and you're using live keys, or vice versa.`);
       setCheckoutLoading(false);
       toast({
         variant: "destructive",
@@ -222,13 +218,19 @@ const Settings = () => {
         })
       });
 
-      if (response.error) throw new Error(response.error);
+      if (response.error) {
+        throw new Error(response.error.message || response.error || "Failed to access subscription management");
+      }
+      
+      if (!response.data?.url) {
+        throw new Error("Invalid response from server. Missing portal URL.");
+      }
       
       // Redirect to Stripe Customer Portal
       window.location.href = response.data.url;
     } catch (error) {
       console.error("Manage subscription error:", error);
-      setError("Failed to access subscription management. The server may be missing Stripe configuration.");
+      setError(`Failed to access subscription management: ${error.message || "Unknown error"}`);
       setManageSubscriptionLoading(false);
       toast({
         variant: "destructive",
