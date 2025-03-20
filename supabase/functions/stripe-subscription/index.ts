@@ -16,7 +16,16 @@ serve(async (req) => {
   try {
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeSecretKey) {
-      throw new Error("STRIPE_SECRET_KEY is not set");
+      console.error("Missing STRIPE_SECRET_KEY in environment variables");
+      return new Response(
+        JSON.stringify({ 
+          error: "STRIPE_SECRET_KEY is not set in the server. Please add it to your Supabase Edge Function Secrets." 
+        }), 
+        { 
+          status: 500, 
+          headers: { "Content-Type": "application/json", ...corsHeaders } 
+        }
+      );
     }
 
     const stripe = new Stripe(stripeSecretKey, {
@@ -44,7 +53,16 @@ serve(async (req) => {
       // Create a checkout session for a new subscription
       const priceId = Deno.env.get("STRIPE_EMPLOYER_PRICE_ID");
       if (!priceId) {
-        throw new Error("STRIPE_EMPLOYER_PRICE_ID is not set");
+        console.error("Missing STRIPE_EMPLOYER_PRICE_ID in environment variables");
+        return new Response(
+          JSON.stringify({ 
+            error: "STRIPE_EMPLOYER_PRICE_ID is not set in the server. Please add it to your Supabase Edge Function Secrets." 
+          }), 
+          { 
+            status: 500, 
+            headers: { "Content-Type": "application/json", ...corsHeaders } 
+          }
+        );
       }
       
       console.log(`Creating checkout session with price ID: ${priceId}`);
@@ -106,7 +124,16 @@ serve(async (req) => {
 
       const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
       if (!webhookSecret) {
-        throw new Error("STRIPE_WEBHOOK_SECRET is not set");
+        console.error("Missing STRIPE_WEBHOOK_SECRET in environment variables");
+        return new Response(
+          JSON.stringify({ 
+            error: "STRIPE_WEBHOOK_SECRET is not set in the server. Please add it to your Supabase Edge Function Secrets." 
+          }), 
+          { 
+            status: 500, 
+            headers: { "Content-Type": "application/json", ...corsHeaders } 
+          }
+        );
       }
 
       const body = await req.text();

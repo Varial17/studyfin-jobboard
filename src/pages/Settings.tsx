@@ -15,6 +15,7 @@ import { Save, CreditCard, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const Settings = () => {
   const { user } = useAuth();
@@ -32,6 +33,7 @@ const Settings = () => {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [manageSubscriptionLoading, setManageSubscriptionLoading] = useState(false);
   const [stripeRedirectHandled, setStripeRedirectHandled] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Handle Stripe redirect on component mount
   useEffect(() => {
@@ -69,6 +71,7 @@ const Settings = () => {
             }
           } catch (error) {
             console.error("Error fetching updated profile:", error);
+            setError("Failed to update profile information. Please refresh the page.");
           }
         }
       } else if (success === 'false') {
@@ -102,6 +105,7 @@ const Settings = () => {
 
     const getProfile = async () => {
       try {
+        setError(null);
         const { data, error } = await supabase
           .from("profiles")
           .select("role, subscription_status, subscription_id")
@@ -118,6 +122,7 @@ const Settings = () => {
         }
       } catch (error) {
         console.error("Error fetching profile:", error);
+        setError("Failed to load user profile. Please refresh the page.");
         toast({
           variant: "destructive",
           title: t("error"),
@@ -141,6 +146,7 @@ const Settings = () => {
     }
 
     setSaving(true);
+    setError(null);
     try {
       const { error } = await supabase
         .from("profiles")
@@ -156,6 +162,7 @@ const Settings = () => {
         description: t("settingsUpdated"),
       });
     } catch (error) {
+      setError("Failed to save settings. Please try again.");
       toast({
         variant: "destructive",
         title: t("error"),
@@ -170,6 +177,7 @@ const Settings = () => {
     if (!user) return;
     
     setCheckoutLoading(true);
+    setError(null);
     try {
       const response = await supabase.functions.invoke('stripe-subscription', {
         body: JSON.stringify({
@@ -178,18 +186,26 @@ const Settings = () => {
         })
       });
 
-      if (response.error) throw new Error(response.error);
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to start checkout process");
+      }
+      
+      // Make sure response.data.url exists before redirecting
+      if (!response.data?.url) {
+        throw new Error("Invalid response from server. Missing checkout URL.");
+      }
       
       // Redirect to Stripe Checkout
       window.location.href = response.data.url;
     } catch (error) {
       console.error("Checkout error:", error);
+      setError("Failed to start checkout process. The server may be missing Stripe configuration.");
+      setCheckoutLoading(false);
       toast({
         variant: "destructive",
         title: t("error"),
-        description: "Failed to start checkout process. Please try again."
+        description: "Failed to start checkout process. Please try again or contact support."
       });
-      setCheckoutLoading(false);
     }
   };
 
@@ -197,6 +213,7 @@ const Settings = () => {
     if (!user) return;
     
     setManageSubscriptionLoading(true);
+    setError(null);
     try {
       const response = await supabase.functions.invoke('stripe-subscription/customer-portal', {
         body: JSON.stringify({
@@ -211,12 +228,13 @@ const Settings = () => {
       window.location.href = response.data.url;
     } catch (error) {
       console.error("Manage subscription error:", error);
+      setError("Failed to access subscription management. The server may be missing Stripe configuration.");
+      setManageSubscriptionLoading(false);
       toast({
         variant: "destructive",
         title: t("error"),
-        description: "Failed to access subscription management. Please try again."
+        description: "Failed to access subscription management. Please try again or contact support."
       });
-      setManageSubscriptionLoading(false);
     }
   };
 
@@ -247,9 +265,17 @@ const Settings = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <div className="container mx-auto px-4 py-8">
-        <div className="flex gap-6">
+        <div className="flex flex-col md:flex-row gap-6">
           <ProfileSidebar />
           <div className="flex-1 max-w-4xl space-y-6">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            
             <Card>
               <CardHeader>
                 <CardTitle>{t("accountSettings")}</CardTitle>
@@ -356,6 +382,13 @@ const Settings = () => {
               </ul>
             </div>
           </div>
+          
+          {error && (
+            <Alert variant="destructive" className="mt-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>
