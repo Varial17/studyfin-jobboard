@@ -62,17 +62,6 @@ const ZohoIntegration = () => {
         console.log("ZohoIntegration: Profile data", data);
         setUserRole(data?.role || null);
         setConnected(data?.zoho_connected || false);
-        
-        // Redirect only if user is definitely not an employer
-        if (data?.role && data.role !== 'employer') {
-          console.log("ZohoIntegration: User is not an employer, redirecting to profile");
-          toast({
-            title: "Access Denied",
-            description: "Only employers can connect to Zoho CRM",
-            variant: "destructive",
-          });
-          navigate('/profile');
-        }
       } catch (error: any) {
         console.error('Error fetching user role:', error);
         setError(error.message);
@@ -205,7 +194,7 @@ const ZohoIntegration = () => {
               <CardHeader>
                 <CardTitle>Connect to Zoho CRM</CardTitle>
                 <CardDescription>
-                  Integrate your job listings with Zoho CRM to manage applicants more effectively
+                  System integration with Zoho CRM to automatically sync user data
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -213,14 +202,16 @@ const ZohoIntegration = () => {
                   <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-900">
                     <AlertTitle>Connected to Zoho CRM</AlertTitle>
                     <AlertDescription>
-                      Your job listings are synced with Zoho CRM. New applicants will automatically be added as leads.
+                      <p>The system is currently connected to Zoho CRM.</p>
+                      <p className="mt-2">New applicants and job applications will automatically be synced to Zoho CRM.</p>
                     </AlertDescription>
                   </Alert>
                 ) : (
                   <Alert>
                     <AlertTitle>Not Connected</AlertTitle>
                     <AlertDescription>
-                      Connect your account to Zoho CRM to automatically create leads when applicants apply to your jobs.
+                      <p>The system is not connected to Zoho CRM.</p>
+                      <p className="mt-2">As an administrator, you need to connect the system to Zoho CRM to enable automatic syncing of user data.</p>
                     </AlertDescription>
                   </Alert>
                 )}

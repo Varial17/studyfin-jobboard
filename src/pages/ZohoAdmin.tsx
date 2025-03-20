@@ -65,18 +65,6 @@ const ZohoAdmin = () => {
         setUserRole(data?.role || null);
         setIsZohoConnected(data?.zoho_connected || false);
         
-        // Redirect if user is not an employer
-        if (data?.role !== 'employer') {
-          console.log("ZohoAdmin: User is not an employer, redirecting to profile");
-          toast({
-            title: "Access Denied",
-            description: "Only employers can access Zoho CRM admin features",
-            variant: "destructive",
-          });
-          navigate('/profile');
-          return;
-        }
-        
         // Redirect if not connected to Zoho
         if (!data?.zoho_connected) {
           console.log("ZohoAdmin: User not connected to Zoho, redirecting to Zoho integration");
@@ -180,11 +168,32 @@ const ZohoAdmin = () => {
           <div className="flex-1 max-w-3xl">
             <h1 className="text-2xl font-semibold mb-6">Zoho CRM Admin</h1>
             
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>System Integration Status</CardTitle>
+                <CardDescription>
+                  Information about the current Zoho CRM integration
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-900 mb-4">
+                  <AlertTitle>Connected to Zoho CRM</AlertTitle>
+                  <AlertDescription>
+                    <p>The system is connected to Zoho CRM and will automatically sync:</p>
+                    <ul className="list-disc ml-6 mt-2">
+                      <li>New user registrations</li>
+                      <li>Job applications</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+            
             <Card>
               <CardHeader>
                 <CardTitle>Sync All Users to Zoho CRM</CardTitle>
                 <CardDescription>
-                  This will add all existing applicants to your Zoho CRM as leads.
+                  This will add all existing users to your Zoho CRM as leads.
                 </CardDescription>
               </CardHeader>
               <CardContent>
