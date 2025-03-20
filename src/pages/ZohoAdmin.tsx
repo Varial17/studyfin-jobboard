@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -105,13 +106,18 @@ const ZohoAdmin = () => {
     try {
       setSyncing(true);
       
-      console.log("ZohoAdmin: Syncing all users to Zoho");
+      console.log("ZohoAdmin: Syncing all users to Zoho", { userId: user.id });
       // Call the edge function
       const { data, error } = await supabase.functions.invoke('sync-all-users-to-zoho', {
         body: { employerId: user.id }
       });
       
-      if (error) throw error;
+      console.log("ZohoAdmin: Edge function response", { data, error });
+      
+      if (error) {
+        console.error("ZohoAdmin: Edge function error", error);
+        throw error;
+      }
       
       console.log("ZohoAdmin: Sync response", data);
       setResult(data);
