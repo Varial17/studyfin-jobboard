@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -260,6 +259,15 @@ const Settings = () => {
     setShowSubscriptionDialog(true);
   };
 
+  const handlePricingAction = (action: "selectFree" | "checkout", tier: any) => {
+    if (action === "selectFree") {
+      setProfile({ ...profile, role: "applicant" });
+      handleSave();
+    } else if (action === "checkout") {
+      handleEmployerSelect();
+    }
+  };
+
   const closeDialog = () => {
     setShowSubscriptionDialog(false);
     setProfile(prev => ({ ...prev, role: "applicant" }));
@@ -335,7 +343,7 @@ const Settings = () => {
                   Select the account type that best suits your needs
                 </p>
                 
-                <PricingSectionDemo />
+                <PricingSectionDemo onAction={handlePricingAction} />
                 
                 <Card className="mt-8">
                   <CardFooter className="justify-end pt-6">

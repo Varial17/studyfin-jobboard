@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -32,7 +31,7 @@ interface PricingTier {
 interface PricingSectionProps {
   tiers: PricingTier[]
   className?: string
-  onAction?: (action: string, tier: PricingTier) => void
+  onAction?: (action: "selectFree" | "checkout", tier: PricingTier) => void
 }
 
 function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
@@ -41,7 +40,7 @@ function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
 
   const handleAction = (tier: PricingTier) => {
     if (onAction && tier.buttonAction) {
-      onAction(tier.buttonAction, tier)
+      onAction(tier.buttonAction, tier);
     }
   }
 

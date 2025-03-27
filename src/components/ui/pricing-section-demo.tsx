@@ -84,8 +84,18 @@ const defaultTiers = [
   },
 ]
 
-function PricingSectionDemo() {
-  return <PricingSection tiers={defaultTiers} />
+interface PricingSectionDemoProps {
+  onAction?: (action: "selectFree" | "checkout", tier: any) => void;
+}
+
+function PricingSectionDemo({ onAction }: PricingSectionDemoProps) {
+  const handleAction = (action: "selectFree" | "checkout", tier: any) => {
+    if (onAction) {
+      onAction(action, tier);
+    }
+  };
+
+  return <PricingSection tiers={defaultTiers} onAction={handleAction} />
 }
 
 export { PricingSectionDemo }
