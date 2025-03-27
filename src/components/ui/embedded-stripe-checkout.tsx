@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -13,6 +12,7 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js"
+import { createPaymentIntent } from "@/services/payment"
 
 // Initialize Stripe with your publishable key
 // This key is safe to be in the client code
@@ -114,20 +114,7 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
         setLoading(true);
         setError(null);
 
-        const response = await fetch("/api/create-payment-intent", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ userId }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to create payment intent");
-        }
-
+        const data = await createPaymentIntent(userId);
         setClientSecret(data.clientSecret);
       } catch (err) {
         console.error("Error creating payment intent:", err);
@@ -167,7 +154,6 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
     );
   }
 
-  // Fix the type issue by explicitly defining the options object with the correct type
   const options = {
     clientSecret,
     appearance: {
