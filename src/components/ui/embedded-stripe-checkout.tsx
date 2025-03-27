@@ -15,8 +15,8 @@ import {
 } from "@stripe/react-stripe-js"
 import { supabase } from "@/integrations/supabase/client"
 
-// Initialize Stripe - using your publishable key
-const stripePromise = loadStripe("pk_live_51QyNBYA1u9Lm91TyZDDQqYKQJ0zLHyxnY6JW2Qeez8TAGMnyoQQJFGxgUTkEq5dhCqDFBIbmXncvv4EkQVCW7xo200PfBTQ9Wz");
+// Initialize Stripe - using test key instead of live key
+const stripePromise = loadStripe("pk_test_51QyNBYA1u9Lm91TyUQ9UYsZ1HrWGvVnrHtjbZiLY9FlqB4GQJrLFzPjotvWeqabnDLHbiISX9aUOTa1m7qTLXK5j00Rsy2Qjvn");
 
 // CheckoutForm component that handles the payment submission
 const CheckoutForm = ({ onSuccess, customerEmail }: { onSuccess: () => void, customerEmail: string }) => {

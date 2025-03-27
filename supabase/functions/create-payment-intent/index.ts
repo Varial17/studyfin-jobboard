@@ -21,7 +21,7 @@ serve(async (req) => {
     
     console.log(`Creating payment intent for user: ${user_id}`)
     
-    // Initialize Stripe
+    // Initialize Stripe with test key instead of live key
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
       apiVersion: '2023-10-16',
       httpClient: Stripe.createFetchHttpClient(),
@@ -57,11 +57,8 @@ serve(async (req) => {
       throw new Error('User email not found')
     }
     
-    // Set the price ID based on environment
-    const liveMode = Deno.env.get('STRIPE_SECRET_KEY')?.startsWith('sk_live')
-    const priceId = liveMode
-      ? 'price_1R74AOA1u9Lm91Tyrg2C0ooM' // Live mode price
-      : 'price_1R6dGHA1u9Lm91TyQzUZ2aJo' // Test mode price
+    // Set the price ID based on environment - use test mode price
+    const priceId = 'price_1R6dGHA1u9Lm91TyQzUZ2aJo' // Test mode price
       
     console.log(`Using price ID: ${priceId}`)
     
@@ -72,7 +69,7 @@ serve(async (req) => {
       automatic_payment_methods: {
         enabled: true,
       },
-      receipt_email: userEmail, // Add the email here
+      receipt_email: userEmail,
       metadata: {
         user_id: user_id,
         price_id: priceId,
