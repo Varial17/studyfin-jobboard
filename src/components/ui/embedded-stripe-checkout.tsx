@@ -167,10 +167,11 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
     );
   }
 
+  // Fix the type issue by explicitly defining the options object with the correct type
   const options = {
     clientSecret,
     appearance: {
-      theme: 'stripe',
+      theme: 'stripe' as const,
       variables: {
         colorPrimary: '#0284c7',
       },
