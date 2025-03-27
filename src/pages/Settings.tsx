@@ -33,6 +33,11 @@ const Settings = () => {
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
   useEffect(() => {
+    // Store user email in sessionStorage for use in checkout process
+    if (user && user.email) {
+      sessionStorage.setItem('userEmail', user.email);
+    }
+    
     const handleStripeRedirect = async () => {
       const url = new URL(window.location.href);
       const success = url.searchParams.get('success');
@@ -175,96 +180,22 @@ const Settings = () => {
   };
 
   const handleSubscription = async (couponCode?: string) => {
-    setLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        throw new Error('You must be logged in to subscribe');
-      }
-
-      const { error, data } = await supabase.functions.invoke('stripe-subscription', {
-        body: {
-          user_id: session.user.id,
-          user_email: session.user.email,
-          return_url: `${window.location.origin}/settings`,
-          coupon_id: couponCode || undefined
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (data?.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error('No checkout URL returned');
-      }
-    } catch (error) {
-      console.error('Error starting subscription:', error);
-      toast({
-        title: 'Subscription Failed',
-        description: error.message || 'Could not start subscription. Please try again.',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
+    const priceId = "price_1R74AOA1u9Lm91Tyrg2C0ooM";
+    let checkoutUrl = `https://checkout.stripe.com/c/pay/${priceId}`;
+    
+    if (user && user.email) {
+      checkoutUrl += `?prefilled_email=${encodeURIComponent(user.email)}`;
     }
+    
+    if (couponCode) {
+      checkoutUrl += `${checkoutUrl.includes('?') ? '&' : '?'}coupon=${encodeURIComponent(couponCode)}`;
+    }
+    
+    window.location.href = checkoutUrl;
   };
 
   const handleCheckout = async () => {
-    if (!user) return;
-    
-    setCheckoutLoading(true);
-    setError(null);
-    setDebugInfo(null);
-    
-    try {
-      console.log("Calling Stripe subscription endpoint...");
-      
-      const response = await supabase.functions.invoke('stripe-subscription', {
-        body: JSON.stringify({
-          user_id: user.id,
-          user_email: user.email,
-          return_url: `${window.location.origin}/settings`
-        })
-      });
-      
-      console.log("Response from Stripe:", response);
-      
-      if (response.error) {
-        throw new Error(response.error);
-      }
-      
-      if (response.data && response.data.error) {
-        throw new Error(response.data.error);
-      }
-      
-      if (!response.data?.url) {
-        throw new Error("Invalid response from server. Missing checkout URL.");
-      }
-      
-      window.location.href = response.data.url;
-    } catch (error) {
-      console.error("Checkout error:", error);
-      
-      let errorMessage = error.message || "Unknown error";
-      let details = error.details || null;
-      
-      setError(errorMessage);
-      
-      if (details) {
-        setDebugInfo(details);
-      }
-      
-      setCheckoutLoading(false);
-      toast({
-        variant: "destructive",
-        title: t("error"),
-        description: "Failed to start checkout process. Please see the error details above."
-      });
-    }
+    handleSubscription(couponCode);
   };
 
   const handleManageSubscription = async () => {

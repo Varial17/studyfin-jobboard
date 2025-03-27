@@ -1,3 +1,4 @@
+
 // Follow us: https://twitter.com/supabase
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
@@ -18,6 +19,9 @@ const stripe = new Stripe(stripeKey || '', {
 console.log("Stripe Edge Function Initialized")
 
 serve(async (req) => {
+  // This function is kept for backward compatibility
+  // but we're now using direct payment links
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -56,11 +60,8 @@ serve(async (req) => {
     }
 
     // Get the price ID from environment variables
-    const priceId = Deno.env.get('STRIPE_EMPLOYER_PRICE_ID')
-    if (!priceId) {
-      throw new Error('STRIPE_EMPLOYER_PRICE_ID is not configured in environment variables')
-    }
-
+    const priceId = "price_1R74AOA1u9Lm91Tyrg2C0ooM"
+    
     console.log(`Using price ID: ${priceId}`)
 
     try {
