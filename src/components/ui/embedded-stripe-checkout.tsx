@@ -15,6 +15,7 @@ import {
 } from "@stripe/react-stripe-js"
 import { StripeElementsOptions } from "@stripe/stripe-js"
 import { createPaymentIntent } from "@/services/payment"
+import { supabase } from "@/integrations/supabase/client"
 
 // Initialize Stripe with your publishable key
 // This key is safe to be in the client code
@@ -136,7 +137,7 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
     setFallbackLoading(true);
     try {
       // Make a direct call to stripe-subscription edge function
-      const { data, error } = await window.supabase.functions.invoke('stripe-subscription', {
+      const { data, error } = await supabase.functions.invoke('stripe-subscription', {
         body: {
           user_id: userId,
           return_url: `${window.location.origin}/settings`
