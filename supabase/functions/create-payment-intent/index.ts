@@ -81,14 +81,40 @@ serve(async (req) => {
       console.log(`Created new customer: ${customerId}`)
     }
     
-    // Create a subscription
-    const subscription = await stripe.subscriptions.create({
-      customer: customerId,
-      items: [{ price: priceId }],
-      payment_behavior: 'default_incomplete',
-      payment_settings: { save_default_payment_method: 'on_subscription' },
-      expand: ['latest_invoice.payment_intent'],
-    })
+    // Create a subscription with a simple retry mechanism
+    let subscription;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        subscription = await stripe.subscriptions.create({
+          customer: customerId,
+          items: [{ price: priceId }],
+          payment_behavior: 'default_incomplete',
+          payment_settings: { save_default_payment_method: 'on_subscription' },
+          expand: ['latest_invoice.payment_intent'],
+        });
+        break; // Success, exit the loop
+      } catch (error) {
+        retryCount++;
+        console.log(`Attempt ${retryCount} failed: ${error.message}`);
+        
+        if (error.type === 'invalid_request_error' && error.code === 'lock_timeout' && retryCount < maxRetries) {
+          // If it's a lock timeout, wait a bit and retry
+          console.log(`Waiting before retry ${retryCount}...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        } else if (retryCount >= maxRetries) {
+          throw error; // Max retries exceeded, rethrow
+        } else {
+          throw error; // Different error, rethrow
+        }
+      }
+    }
+    
+    if (!subscription) {
+      throw new Error('Failed to create subscription after multiple attempts');
+    }
     
     const invoice = subscription.latest_invoice
     

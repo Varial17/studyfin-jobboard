@@ -28,35 +28,51 @@ const CheckoutForm = ({ onSuccess }: { onSuccess: () => void }) => {
   const [processing, setProcessing] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
 
+  useEffect(() => {
+    if (!stripe || !elements) {
+      console.log("Stripe or Elements not initialized yet");
+    } else {
+      console.log("Stripe and Elements initialized successfully");
+    }
+  }, [stripe, elements]);
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     if (!stripe || !elements) {
+      console.error("Stripe or Elements not initialized");
+      setErrorMessage("Payment system not fully loaded. Please try again or refresh the page.");
       return;
     }
 
     setProcessing(true);
     setErrorMessage(null);
 
-    const { error, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: window.location.origin + "/settings",
-      },
-      redirect: "if_required",
-    });
-
-    if (error) {
-      console.error("Payment error:", error);
-      setErrorMessage(error.message || "An error occurred with your payment");
-      setProcessing(false);
-    } else if (paymentIntent && paymentIntent.status === "succeeded") {
-      console.log("Payment succeeded:", paymentIntent);
-      setSucceeded(true);
-      setProcessing(false);
-      onSuccess();
-    } else {
-      console.log("Payment status:", paymentIntent?.status);
+    console.log("Processing payment...");
+    
+    try {
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: window.location.origin + "/settings",
+        },
+        redirect: "if_required",
+      });
+  
+      if (error) {
+        console.error("Payment error:", error);
+        setErrorMessage(error.message || "An error occurred with your payment");
+      } else if (paymentIntent && paymentIntent.status === "succeeded") {
+        console.log("Payment succeeded:", paymentIntent);
+        setSucceeded(true);
+        onSuccess();
+      } else {
+        console.log("Payment status:", paymentIntent?.status);
+      }
+    } catch (err) {
+      console.error("Exception during payment confirmation:", err);
+      setErrorMessage("An unexpected error occurred. Please try again.");
+    } finally {
       setProcessing(false);
     }
   };
@@ -112,8 +128,7 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
   const [error, setError] = useState<string | null>(null);
   const [fallbackMode, setFallbackMode] = useState(false);
   const [fallbackLoading, setFallbackLoading] = useState(false);
-
-  // Debug state to track the flow
+  const [retryCount, setRetryCount] = useState(0);
   const [debugState, setDebugState] = useState<string>("initializing");
 
   useEffect(() => {
@@ -123,7 +138,7 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
       try {
         setLoading(true);
         setError(null);
-        setDebugState("fetching payment intent");
+        setDebugState(`fetching payment intent (attempt ${retryCount + 1})`);
 
         console.log(`Fetching payment intent for user: ${userId}`);
         const data = await createPaymentIntent(userId);
@@ -137,6 +152,14 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
         setDebugState("payment intent received");
       } catch (err) {
         console.error("Error creating payment intent:", err);
+        
+        // If we've tried less than 3 times, retry
+        if (retryCount < 2) {
+          console.log(`Retrying payment intent creation (attempt ${retryCount + 2})`);
+          setRetryCount(retryCount + 1);
+          return; // This will trigger the useEffect again since retryCount changes
+        }
+        
         setError("We're experiencing issues with our payment system. Please try the alternative checkout method below.");
         setFallbackMode(true);
         setDebugState("error-fallback");
@@ -146,7 +169,7 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
     };
 
     getPaymentIntent();
-  }, [userId, debugState]);
+  }, [userId, retryCount, debugState]);
 
   const handleFallbackCheckout = async () => {
     setFallbackLoading(true);
@@ -176,11 +199,18 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
     }
   };
 
+  const handleRetry = () => {
+    setRetryCount(0);
+    setDebugState("initializing");
+    setFallbackMode(false);
+    setError(null);
+  };
+
   if (loading) {
     return (
-      <Card className="p-6 flex justify-center items-center">
+      <Card className="p-6 flex flex-col justify-center items-center space-y-4">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <span className="ml-2">Initializing payment...</span>
+        <span className="text-center">Initializing payment... {retryCount > 0 ? `(Attempt ${retryCount + 1})` : ''}</span>
       </Card>
     );
   }
@@ -201,20 +231,33 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
             <p className="text-center text-sm text-muted-foreground">
               Subscribe to access employer features, including unlimited job postings and applicant tracking
             </p>
-            <Button 
-              className="w-full py-6 text-lg"
-              onClick={handleFallbackCheckout}
-              disabled={fallbackLoading}
-            >
-              {fallbackLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                  Processing...
-                </>
-              ) : (
-                "Subscribe Now"
+            
+            <div className="w-full space-y-3">
+              <Button 
+                className="w-full py-6 text-lg"
+                onClick={handleFallbackCheckout}
+                disabled={fallbackLoading}
+              >
+                {fallbackLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                    Processing...
+                  </>
+                ) : (
+                  "Subscribe Now"
+                )}
+              </Button>
+              
+              {error && (
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={handleRetry}
+                >
+                  Retry Embedded Checkout
+                </Button>
               )}
-            </Button>
+            </div>
           </div>
         </Card>
       </div>
