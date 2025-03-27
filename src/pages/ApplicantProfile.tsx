@@ -20,6 +20,7 @@ const ApplicantProfile = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState({
     full_name: "",
     title: "",
@@ -38,7 +39,13 @@ const ApplicantProfile = () => {
   });
 
   useEffect(() => {
+    // Log when the component mounts for debugging
+    console.log("ApplicantProfile component mounted");
+    console.log("Current user:", user);
+    console.log("Applicant ID:", applicantId);
+    
     if (!user) {
+      console.log("No user found, redirecting to auth");
       navigate("/auth");
       return;
     }
@@ -49,6 +56,8 @@ const ApplicantProfile = () => {
         console.log("Fetching applicant profile for ID:", applicantId);
         
         if (!applicantId) {
+          console.error("Missing applicant ID");
+          setError("Applicant ID is missing");
           throw new Error("Applicant ID is missing");
         }
         
@@ -60,6 +69,7 @@ const ApplicantProfile = () => {
 
         if (error) {
           console.error("Error fetching applicant profile:", error);
+          setError(`Error fetching profile: ${error.message}`);
           throw error;
         }
         
@@ -81,9 +91,13 @@ const ApplicantProfile = () => {
             linkedin_url: data.linkedin_url || "",
             role: data.role || "applicant",
           });
+        } else {
+          console.error("No profile data found");
+          setError("Profile not found");
         }
       } catch (error: any) {
         console.error("Applicant profile fetch error:", error);
+        setError(error.message || "Error fetching profile");
         toast({
           variant: "destructive",
           title: t("error"),
@@ -91,6 +105,7 @@ const ApplicantProfile = () => {
         });
       } finally {
         setLoading(false);
+        console.log("Finished loading applicant profile");
       }
     };
 
@@ -101,6 +116,20 @@ const ApplicantProfile = () => {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-neutral-900 flex items-center justify-center">
         <span className="text-lg">{t("loading")}...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-neutral-900 flex items-center justify-center flex-col gap-4">
+        <span className="text-lg text-red-500">{error}</span>
+        <button 
+          onClick={() => navigate(-1)}
+          className="px-4 py-2 bg-primary text-white rounded-md"
+        >
+          {t("goBack")}
+        </button>
       </div>
     );
   }
