@@ -62,6 +62,19 @@ serve(async (req) => {
     console.log(`Using price ID: ${priceId}`)
 
     try {
+      // Check API key mode (test or live)
+      const keyMode = stripeKey.startsWith('sk_test') ? 'test' : 'live';
+      console.log(`API key mode: ${keyMode}`);
+      
+      // Check price ID mode (test or live)
+      const priceMode = priceId.startsWith('price_test') ? 'test' : 'live';
+      console.log(`Price ID mode: ${priceMode}`);
+      
+      // Warn if modes don't match
+      if (keyMode !== priceMode) {
+        console.warn(`WARNING: API key mode (${keyMode}) doesn't match Price ID mode (${priceMode}). This will cause errors.`);
+      }
+      
       // Create a checkout session
       const session = await stripe.checkout.sessions.create({
         line_items: [
@@ -92,35 +105,46 @@ serve(async (req) => {
     } catch (stripeError) {
       console.error(`Stripe API Error: ${JSON.stringify(stripeError)}`)
       
+      // Mode mismatch handling
+      const keyMode = stripeKey.startsWith('sk_test') ? 'test' : 'live';
+      const priceMode = priceId.startsWith('price_test') ? 'test' : 'live';
+      
+      if (keyMode !== priceMode) {
+        throw new Error(`Stripe mode mismatch: Your API key is in ${keyMode} mode but your price ID is in ${priceMode} mode. They must match.`);
+      }
+      
       // Provide a more specific error for API key issues
       if (stripeError.message && stripeError.message.includes('API key')) {
-        throw new Error(`Invalid Stripe API key. Make sure you're using the correct test/live API key that matches your Stripe account mode.`)
+        throw new Error(`Invalid Stripe API key. Make sure you're using the correct ${keyMode} API key for your Stripe account.`);
       }
       
       // For price ID issues
       if (stripeError.message && stripeError.message.includes('No such price')) {
-        throw new Error(`Invalid price ID: ${priceId}. Make sure you're using a price ID that exists in your Stripe account and matches your API key mode (test/live).`)
+        throw new Error(`Invalid price ID: ${priceId}. Make sure you're using a price ID that exists in your Stripe ${keyMode} mode account.`);
       }
       
-      throw new Error(`Stripe API Error: ${stripeError.message || 'Unknown Stripe error'}.`)
+      throw new Error(`Stripe API Error: ${stripeError.message || 'Unknown Stripe error'}.`);
     }
   } catch (error) {
-    console.error(`Error in Stripe checkout: ${error.message}`)
-    console.error(error)
+    console.error(`Error in Stripe checkout: ${error.message}`);
+    console.error(error);
     
     // Create a more descriptive error response
-    let errorMessage = error.message
-    let statusCode = 500
+    let errorMessage = error.message;
+    let statusCode = 500;
     
     if (error.message.includes('No such price')) {
-      errorMessage = 'Invalid Stripe price ID. Make sure you are using the correct test/live price ID matching your API key mode.'
-      statusCode = 400
+      errorMessage = 'Invalid Stripe price ID. Make sure you are using the correct test/live price ID matching your API key mode.';
+      statusCode = 400;
     } else if (error.message.includes('API key')) {
-      errorMessage = 'Invalid Stripe API key. Check if your API key is valid and matches the expected mode (test/live).'
-      statusCode = 401
+      errorMessage = 'Invalid Stripe API key. Check if your API key is valid and matches the expected mode (test/live).';
+      statusCode = 401;
     } else if (error.message.includes('Stripe API Error')) {
       // Keep original error message for Stripe API errors
-      statusCode = 400
+      statusCode = 400;
+    } else if (error.message.includes('mode mismatch')) {
+      errorMessage = error.message;
+      statusCode = 400;
     }
     
     return new Response(
