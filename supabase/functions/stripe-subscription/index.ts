@@ -6,10 +6,11 @@ import Stripe from 'https://esm.sh/stripe@12.0.0?target=deno'
 
 // Initialize Stripe with more detailed error logging
 const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
-console.log(`Stripe key exists: ${!!stripeKey}`);
-console.log(`Stripe key type: ${stripeKey ? (stripeKey.startsWith('sk_test') ? 'test' : 'live') : 'undefined'}`);
+if (!stripeKey) {
+  console.error("ERROR: STRIPE_SECRET_KEY is not set in environment variables");
+}
 
-const stripe = new Stripe(stripeKey ?? '', {
+const stripe = new Stripe(stripeKey || '', {
   apiVersion: '2023-10-16',
   httpClient: Stripe.createFetchHttpClient(),
 });
@@ -23,6 +24,11 @@ serve(async (req) => {
   }
 
   try {
+    // Validate Stripe Key is present
+    if (!stripeKey) {
+      throw new Error('STRIPE_SECRET_KEY is not configured in environment variables. Please add it to your Supabase Edge Function secrets.');
+    }
+
     const requestUrl = new URL(req.url)
     const path = requestUrl.pathname.split('/').pop()
 
@@ -53,9 +59,7 @@ serve(async (req) => {
       throw new Error('STRIPE_EMPLOYER_PRICE_ID is not configured in environment variables')
     }
 
-    console.log(`Price ID exists: ${!!priceId}`)
-    console.log(`Price ID type: ${priceId ? (priceId.startsWith('price_test') ? 'test' : 'live') : 'undefined'}`)
-    console.log(`Creating checkout session for user: ${user_id}, priceId: ${priceId}`)
+    console.log(`Using price ID: ${priceId}`)
 
     try {
       // Create a checkout session
@@ -87,7 +91,18 @@ serve(async (req) => {
       )
     } catch (stripeError) {
       console.error(`Stripe API Error: ${JSON.stringify(stripeError)}`)
-      throw new Error(`Stripe API Error: ${stripeError.message || 'Unknown Stripe error'}. This may happen if your Stripe account is in ${stripeKey && stripeKey.startsWith('sk_test') ? 'test' : 'live'} mode and your price ID is in ${priceId && priceId.startsWith('price_test') ? 'test' : 'live'} mode.`)
+      
+      // Provide a more specific error for API key issues
+      if (stripeError.message && stripeError.message.includes('API key')) {
+        throw new Error(`Invalid Stripe API key. Make sure you're using the correct test/live API key that matches your Stripe account mode.`)
+      }
+      
+      // For price ID issues
+      if (stripeError.message && stripeError.message.includes('No such price')) {
+        throw new Error(`Invalid price ID: ${priceId}. Make sure you're using a price ID that exists in your Stripe account and matches your API key mode (test/live).`)
+      }
+      
+      throw new Error(`Stripe API Error: ${stripeError.message || 'Unknown Stripe error'}.`)
     }
   } catch (error) {
     console.error(`Error in Stripe checkout: ${error.message}`)

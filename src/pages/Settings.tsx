@@ -170,18 +170,19 @@ const Settings = () => {
     
     try {
       console.log("Calling Stripe subscription endpoint...");
+      
       const response = await supabase.functions.invoke('stripe-subscription', {
         body: JSON.stringify({
           user_id: user.email,
           return_url: `${window.location.origin}/settings`
         })
       });
-
-      if (response.error) {
-        throw new Error(response.error.message || response.error || "Failed to start checkout process");
-      }
       
       console.log("Response from Stripe:", response);
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
       
       if (response.data && response.data.error) {
         throw new Error(response.data.error);
@@ -196,18 +197,19 @@ const Settings = () => {
       console.error("Checkout error:", error);
       
       let errorMessage = error.message || "Unknown error";
+      let details = error.details || null;
       
-      setError(`Failed to start checkout process: ${errorMessage}. This may happen if your Stripe account is in test mode and you're using live keys, or vice versa.`);
+      setError(errorMessage);
       
-      if (error.details) {
-        setDebugInfo(error.details);
+      if (details) {
+        setDebugInfo(details);
       }
       
       setCheckoutLoading(false);
       toast({
         variant: "destructive",
         title: t("error"),
-        description: "Failed to start checkout process. Please try again or contact support."
+        description: "Failed to start checkout process. Please see the error details above."
       });
     }
   };
