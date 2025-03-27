@@ -91,6 +91,12 @@ const CheckoutForm = ({ onSuccess, customerEmail }: { onSuccess: () => void, cus
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {customerEmail && (
+        <div className="mb-4 p-2 bg-gray-50 rounded-md">
+          <p className="text-sm text-gray-600">Billing email: <span className="font-medium">{customerEmail}</span></p>
+        </div>
+      )}
+      
       <PaymentElement options={{layout: 'accordion'}} />
       
       {errorMessage && (
