@@ -20,10 +20,11 @@ serve(async (req) => {
   }
 
   try {
+    // Get the signature from the headers
     const signature = req.headers.get('stripe-signature')
     
     if (!signature) {
-      console.error('Missing Stripe signature')
+      console.error('Missing Stripe signature in headers. Headers received:', Object.fromEntries([...req.headers.entries()]))
       return new Response(
         JSON.stringify({ error: 'Missing Stripe signature', code: 401 }),
         {
@@ -48,6 +49,11 @@ serve(async (req) => {
 
     // Get request body as text for signature verification
     const body = await req.text()
+    
+    // Log minimal request information for debugging
+    console.log(`Webhook request received: ${req.method}`)
+    console.log(`Headers present: ${[...req.headers.keys()].join(', ')}`)
+    console.log(`Signature length: ${signature ? signature.length : 'missing'}`)
     
     // Verify webhook signature and extract the event
     let event
@@ -96,17 +102,40 @@ serve(async (req) => {
       
       if (!userId && customer.email) {
         // If no user_id in metadata, try to find the user by email
-        const { data: userData, error: userError } = await supabaseClient
+        console.log(`No user_id in metadata, looking up by email: ${customer.email}`)
+        
+        // First try exact match on id field
+        const { data: userByIdData, error: userByIdError } = await supabaseClient
           .from('profiles')
           .select('id')
           .eq('id', customer.email.split('@')[0])
           .single()
         
-        if (userError) {
-          console.error('Error finding user by email:', userError)
-        } else if (userData) {
-          userId = userData.id
-          console.log(`Found user by email: ${userId}`)
+        if (!userByIdError && userByIdData) {
+          userId = userByIdData.id
+          console.log(`Found user by exact id match: ${userId}`)
+        } else {
+          // If no match on id, try finding by UUID match
+          try {
+            // Parse the customer email to see if it contains a valid UUID
+            const emailParts = customer.email.split('@')
+            const possibleUuid = emailParts[0]
+            
+            if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(possibleUuid)) {
+              const { data: userData, error: userError } = await supabaseClient
+                .from('profiles')
+                .select('id')
+                .eq('id', possibleUuid)
+                .single()
+              
+              if (!userError && userData) {
+                userId = userData.id
+                console.log(`Found user by UUID in email: ${userId}`)
+              }
+            }
+          } catch (error) {
+            console.log('Error parsing email for UUID:', error)
+          }
         }
       }
       
@@ -130,8 +159,20 @@ serve(async (req) => {
         
         console.log(`Successfully updated subscription status for user ${userId} to ${subscriptionStatus}`)
         console.log(`Updated user role to: ${subscriptionStatus === 'active' ? 'employer' : 'applicant'}`)
+        
+        // Update the customer with user_id metadata if it's not set
+        if (!customer.metadata.user_id) {
+          try {
+            await stripe.customers.update(customer.id, {
+              metadata: { user_id: userId }
+            });
+            console.log(`Updated Stripe customer with user_id metadata: ${userId}`)
+          } catch (updateError) {
+            console.error('Error updating customer metadata:', updateError)
+          }
+        }
       } else {
-        console.error('Unable to find user ID for customer:', customer.id)
+        console.error('Unable to find user ID for customer:', customer.id, customer.email)
       }
     } 
     else if (event.type === 'customer.subscription.updated') {
@@ -232,6 +273,7 @@ serve(async (req) => {
           }
         } else {
           console.error('Missing customer ID or client reference ID in checkout session')
+          console.log('Session data:', JSON.stringify(session))
         }
       }
     }
