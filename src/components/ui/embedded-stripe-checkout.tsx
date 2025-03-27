@@ -1,86 +1,76 @@
 
 "use client"
 
-import { useEffect, useState, FormEvent } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { loadStripe } from "@stripe/stripe-js"
-import {
-  Elements,
-  PaymentElement,
-  useStripe,
-  useElements
-} from "@stripe/react-stripe-js"
 import { supabase } from "@/integrations/supabase/client"
 
-// Initialize Stripe with the test publishable key
-// Make sure this matches the environment of the secret key used in the edge function
-const stripePromise = loadStripe("pk_test_51QyNBYA1u9Lm91TyUQ9UYsZ1HrWGvVnrHtjbZiLY9FlqB4GQJrLFzPjotvWeqabnDLHbiISX9aUOTa1m7qTLXK5j00Rsy2Qjvn");
+interface EmbeddedStripeCheckoutProps {
+  onSuccess: () => void;
+  userId: string;
+}
 
-// CheckoutForm component that handles the payment submission
-const CheckoutForm = ({ onSuccess, customerEmail }: { onSuccess: () => void, customerEmail: string }) => {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [processing, setProcessing] = useState(false);
-  const [succeeded, setSucceeded] = useState(false);
+export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeCheckoutProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    
-    if (!stripe || !elements) {
-      return;
-    }
-
-    setProcessing(true);
-    setErrorMessage(null);
-
-    console.log("Processing payment...");
-    
-    try {
-      // Submit the form data to Stripe
-      const { error: submitError } = await elements.submit();
+  // Check for success on page load (for redirect back from Stripe)
+  useEffect(() => {
+    const checkSuccess = () => {
+      const url = new URL(window.location.href);
+      const successParam = url.searchParams.get('success');
+      const sessionId = url.searchParams.get('session_id');
       
-      if (submitError) {
-        console.error("Elements submission error:", submitError);
-        setErrorMessage(submitError.message || "Failed to process your payment information");
-        setProcessing(false);
-        return;
-      }
-      
-      // Confirm the payment
-      const { error } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/settings?success=true`,
-          payment_method_data: {
-            billing_details: {
-              email: customerEmail,
-            }
-          }
-        },
-        redirect: 'if_required'
-      });
-
-      if (error) {
-        console.error("Payment error:", error);
-        setErrorMessage(error.message || "An unexpected error occurred");
-      } else {
-        console.log("Payment succeeded!");
-        setSucceeded(true);
+      if (successParam === 'true' && sessionId) {
+        setSuccess(true);
         onSuccess();
+        // Remove query params from URL to prevent refresh issues
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
+    };
+    
+    checkSuccess();
+  }, [onSuccess]);
+
+  const handleCheckout = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log("Creating Stripe checkout session for user:", userId);
+      
+      const { data, error } = await supabase.functions.invoke('stripe-subscription', {
+        body: {
+          user_id: userId,
+          return_url: `${window.location.origin}/settings`
+        }
+      });
+      
+      if (error) {
+        console.error("Stripe subscription error:", error);
+        throw new Error(error.message || "Failed to create checkout session");
+      }
+      
+      if (!data?.url) {
+        console.error("Invalid response from stripe-subscription:", data);
+        throw new Error("Invalid response - no checkout URL returned");
+      }
+      
+      console.log("Redirecting to Stripe checkout:", data.url);
+      window.location.href = data.url;
+      
     } catch (err) {
-      console.error("Exception during payment confirmation:", err);
-      setErrorMessage("An unexpected error occurred. Please try again later.");
-    } finally {
-      setProcessing(false);
+      console.error("Error creating checkout session:", err);
+      setError(err.message || "An unexpected error occurred. Please try again later.");
+      setLoading(false);
     }
   };
 
-  if (succeeded) {
+  if (success) {
     return (
       <Alert className="bg-green-50 border-green-200">
         <CheckCircle className="h-5 w-5 text-green-500" />
@@ -91,144 +81,13 @@ const CheckoutForm = ({ onSuccess, customerEmail }: { onSuccess: () => void, cus
     );
   }
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {customerEmail && (
-        <div className="mb-4 p-2 bg-gray-50 rounded-md">
-          <p className="text-sm text-gray-600">Billing email: <span className="font-medium">{customerEmail}</span></p>
-        </div>
-      )}
-      
-      <PaymentElement options={{layout: 'accordion'}} />
-      
-      {errorMessage && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{errorMessage}</AlertDescription>
-        </Alert>
-      )}
-      
-      <Button 
-        type="submit" 
-        disabled={processing || !stripe || !elements} 
-        className="w-full"
-      >
-        {processing ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-            Processing...
-          </>
-        ) : (
-          "Subscribe Now"
-        )}
-      </Button>
-    </form>
-  );
-};
-
-interface EmbeddedStripeCheckoutProps {
-  onSuccess: () => void;
-  userId: string;
-}
-
-export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeCheckoutProps) {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [fallbackMode, setFallbackMode] = useState(false);
-  const [fallbackLoading, setFallbackLoading] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [customerEmail, setCustomerEmail] = useState<string | null>(null);
-
-  // Function to fetch client secret from our backend
-  const fetchClientSecret = async () => {
-    try {
-      console.log("Fetching payment intent for user:", userId);
-      setLoading(true);
-      
-      const { data, error } = await supabase.functions.invoke('create-payment-intent', {
-        body: { user_id: userId }
-      });
-      
-      if (error) {
-        console.error("Payment intent creation error:", error);
-        throw new Error(error.message || 'Failed to create payment intent');
-      }
-      
-      if (!data || !data.clientSecret) {
-        console.error("Invalid response from create-payment-intent:", data);
-        throw new Error('Invalid response - no client secret returned');
-      }
-      
-      console.log("Payment intent created successfully");
-      setClientSecret(data.clientSecret);
-      
-      // Set customer email if it was returned from the server
-      if (data.customerEmail) {
-        setCustomerEmail(data.customerEmail);
-        console.log("Customer email set:", data.customerEmail);
-      }
-    } catch (error) {
-      console.error("Error creating checkout session:", error);
-      setError(error.message || "Failed to initialize payment");
-      setFallbackMode(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchClientSecret();
-  }, [userId]);
-
-  const handleFallbackCheckout = async () => {
-    setFallbackLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('stripe-subscription', {
-        body: {
-          user_id: userId,
-          return_url: `${window.location.origin}/settings`
-        }
-      });
-      
-      if (error) throw new Error(error.message || 'Failed to start checkout');
-      
-      if (data?.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error('No checkout URL returned');
-      }
-    } catch (err) {
-      console.error('Error creating checkout session:', err);
-      setError(`Checkout failed: ${err.message || 'Unknown error'}`);
-    } finally {
-      setFallbackLoading(false);
-    }
-  };
-
-  const handleRetry = () => {
-    setError(null);
-    setFallbackMode(false);
-    fetchClientSecret();
-  };
-
-  if (loading) {
-    return (
-      <Card className="p-6 flex flex-col justify-center items-center space-y-4">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <span className="text-center">Initializing payment...</span>
-      </Card>
-    );
-  }
-
-  if (fallbackMode || error) {
+  if (error) {
     return (
       <div className="space-y-4">
-        {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
         
         <Card className="p-6">
           <div className="flex flex-col space-y-4 items-center">
@@ -237,54 +96,49 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
               Subscribe to access employer features, including unlimited job postings and applicant tracking
             </p>
             
-            <div className="w-full space-y-3">
-              <Button 
-                className="w-full py-6 text-lg"
-                onClick={handleFallbackCheckout}
-                disabled={fallbackLoading}
-              >
-                {fallbackLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                    Processing...
-                  </>
-                ) : (
-                  "Subscribe Now"
-                )}
-              </Button>
-              
-              {error && (
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={handleRetry}
-                >
-                  Retry Embedded Checkout
-                </Button>
+            <Button 
+              className="w-full"
+              onClick={handleCheckout}
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                  Processing...
+                </>
+              ) : (
+                "Try Again"
               )}
-            </div>
+            </Button>
           </div>
         </Card>
       </div>
     );
   }
 
-  if (!clientSecret) {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>Failed to initialize payment. Please try again later.</AlertDescription>
-      </Alert>
-    );
-  }
-
   return (
     <Card className="p-6">
-      <Elements stripe={stripePromise} options={{ clientSecret }}>
-        <div className="space-y-4">
-          <CheckoutForm onSuccess={onSuccess} customerEmail={customerEmail || ''} />
-        </div>
-      </Elements>
+      <div className="flex flex-col space-y-4 items-center">
+        <h3 className="text-lg font-medium">Employer Subscription - $50/month</h3>
+        <p className="text-center text-sm text-muted-foreground">
+          Subscribe to access employer features, including unlimited job postings and applicant tracking
+        </p>
+        
+        <Button 
+          className="w-full"
+          onClick={handleCheckout}
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+              Processing...
+            </>
+          ) : (
+            "Subscribe Now"
+          )}
+        </Button>
+      </div>
     </Card>
   );
 }
