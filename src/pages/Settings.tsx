@@ -14,7 +14,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { PricingSectionDemo } from "@/components/ui/pricing-section-demo";
 
 const Settings = () => {
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -43,15 +43,6 @@ const Settings = () => {
         
         if (user) {
           try {
-            const { data: profileData, error: profileError } = await supabase
-              .from("profiles")
-              .update({
-                role: "employer"
-              })
-              .eq("id", user.id);
-            
-            if (profileError) throw profileError;
-            
             const { data, error } = await supabase
               .from("profiles")
               .select("role, subscription_status, subscription_id")
@@ -62,22 +53,18 @@ const Settings = () => {
             
             if (data) {
               setProfile({
-                role: data.role || "employer",
+                role: data.role || "applicant",
                 subscription_status: data.subscription_status,
                 subscription_id: data.subscription_id
               });
-              
-              await refreshUser();
               
               toast({
                 title: t("success"),
                 description: "Your employer subscription is now active. You can post unlimited job listings.",
               });
-              
-              navigate("/profile");
             }
           } catch (error) {
-            console.error("Error updating profile after subscription:", error);
+            console.error("Error fetching updated profile:", error);
             setError("Failed to update profile information. Please refresh the page.");
           }
         }
@@ -97,7 +84,7 @@ const Settings = () => {
     if (!stripeRedirectHandled) {
       handleStripeRedirect();
     }
-  }, [user, toast, stripeRedirectHandled, t, navigate, refreshUser]);
+  }, [user, toast, stripeRedirectHandled, t]);
 
   useEffect(() => {
     if (!user) {
