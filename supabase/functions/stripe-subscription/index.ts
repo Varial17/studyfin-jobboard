@@ -70,11 +70,15 @@ serve(async (req) => {
       console.log(`API key mode: ${keyMode}`);
       
       // Check price ID mode (test or live)
-      const priceMode = priceId.startsWith('price_test') ? 'test' : 'live';
+      const priceMode = priceId.startsWith('price_test') ? 'test' : (priceId.startsWith('price_') ? 'live' : 'invalid');
       console.log(`Price ID mode: ${priceMode}`);
       
-      // Warn if modes don't match
-      if (keyMode !== priceMode) {
+      // Warn if modes don't match or if price ID format is invalid
+      if (priceMode === 'invalid') {
+        throw new Error(`Invalid price ID format: ${priceId}. Price IDs should start with 'price_' not 'prod_'. Please check your STRIPE_EMPLOYER_PRICE_ID environment variable.`);
+      }
+      
+      if (priceMode !== 'invalid' && keyMode !== priceMode) {
         console.warn(`WARNING: API key mode (${keyMode}) doesn't match Price ID mode (${priceMode}). This will cause errors.`);
       }
       
@@ -132,9 +136,14 @@ serve(async (req) => {
     } catch (stripeError) {
       console.error(`Stripe API Error: ${JSON.stringify(stripeError)}`)
       
+      // Price ID format validation
+      if (priceId && !priceId.startsWith('price_')) {
+        throw new Error(`Invalid price ID format: ${priceId}. Price IDs should start with 'price_' not 'prod_'. Please check your STRIPE_EMPLOYER_PRICE_ID environment variable.`);
+      }
+      
       // Mode mismatch handling
       const keyMode = stripeKey.startsWith('sk_test') ? 'test' : 'live';
-      const priceMode = priceId.startsWith('price_test') ? 'test' : 'live';
+      const priceMode = priceId && priceId.startsWith('price_test') ? 'test' : 'live';
       
       if (keyMode !== priceMode) {
         throw new Error(`Stripe mode mismatch: Your API key is in ${keyMode} mode but your price ID is in ${priceMode} mode. They must match.`);
@@ -170,6 +179,9 @@ serve(async (req) => {
       // Keep original error message for Stripe API errors
       statusCode = 400;
     } else if (error.message.includes('mode mismatch')) {
+      errorMessage = error.message;
+      statusCode = 400;
+    } else if (error.message.includes('Invalid price ID format')) {
       errorMessage = error.message;
       statusCode = 400;
     }
