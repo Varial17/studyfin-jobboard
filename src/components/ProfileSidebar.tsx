@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { User, Briefcase, Plus, Settings, LogOut, ClipboardList, LinkIcon } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -68,7 +68,7 @@ export function ProfileSidebar() {
       ),
     },
     {
-      label: t("applications") || "Applications", 
+      label: "Applications", 
       href: "/applications",
       icon: (
         <ClipboardList className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
@@ -80,7 +80,7 @@ export function ProfileSidebar() {
   if (userRole === 'employer') {
     links.push(
       {
-        label: t("postJob") || "Post Job",
+        label: "Post Job",
         href: "/post-job",
         icon: (
           <Plus className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
@@ -92,7 +92,7 @@ export function ProfileSidebar() {
     if (isAdmin) {
       links.push(
         {
-          label: t("zohoIntegration") || "Zoho Integration",
+          label: "Zoho Integration",
           href: "/profile/zoho",
           icon: (
             <LinkIcon className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
@@ -104,7 +104,7 @@ export function ProfileSidebar() {
       if (zohoConnected) {
         links.push(
           {
-            label: t("zohoAdmin") || "Zoho Admin",
+            label: "Zoho Admin",
             href: "/profile/zoho/admin",
             icon: (
               <Settings className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
@@ -118,7 +118,7 @@ export function ProfileSidebar() {
   // Add settings link for all users
   links.push(
     {
-      label: t("settings") || "Settings",
+      label: "Settings",
       href: "/settings",
       icon: (
         <Settings className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
