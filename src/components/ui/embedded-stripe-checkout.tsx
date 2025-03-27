@@ -15,7 +15,8 @@ import {
 } from "@stripe/react-stripe-js"
 import { supabase } from "@/integrations/supabase/client"
 
-// Initialize Stripe - using test key instead of live key
+// Initialize Stripe with the test publishable key
+// Make sure this matches the environment of the secret key used in the edge function
 const stripePromise = loadStripe("pk_test_51QyNBYA1u9Lm91TyUQ9UYsZ1HrWGvVnrHtjbZiLY9FlqB4GQJrLFzPjotvWeqabnDLHbiISX9aUOTa1m7qTLXK5j00Rsy2Qjvn");
 
 // CheckoutForm component that handles the payment submission
@@ -149,10 +150,12 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
       });
       
       if (error) {
+        console.error("Payment intent creation error:", error);
         throw new Error(error.message || 'Failed to create payment intent');
       }
       
       if (!data || !data.clientSecret) {
+        console.error("Invalid response from create-payment-intent:", data);
         throw new Error('Invalid response - no client secret returned');
       }
       
@@ -162,6 +165,7 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
       // Set customer email if it was returned from the server
       if (data.customerEmail) {
         setCustomerEmail(data.customerEmail);
+        console.log("Customer email set:", data.customerEmail);
       }
     } catch (error) {
       console.error("Error creating checkout session:", error);
