@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +13,7 @@ import { Save, CreditCard, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { PricingSectionDemo } from "@/components/ui/pricing-section-demo";
+import { Input } from "@/components/ui/input";
 
 const Settings = () => {
   const { user, refreshUser } = useAuth();
@@ -36,6 +38,7 @@ const Settings = () => {
   useEffect(() => {
     if (user && user.email) {
       sessionStorage.setItem('userEmail', user.email);
+      sessionStorage.setItem('userId', user.id);
     }
     
     const handleStripeRedirect = async () => {
@@ -179,23 +182,43 @@ const Settings = () => {
     }
   };
 
-  const handleSubscription = async (couponCode?: string) => {
-    const priceId = "price_1R74AOA1u9Lm91Tyrg2C0ooM";
-    let checkoutUrl = `https://checkout.stripe.com/c/pay/${priceId}`;
-    
-    if (user && user.email) {
-      checkoutUrl += `?prefilled_email=${encodeURIComponent(user.email)}`;
-    }
-    
-    if (couponCode) {
-      checkoutUrl += `${checkoutUrl.includes('?') ? '&' : '?'}coupon=${encodeURIComponent(couponCode)}`;
-    }
-    
-    window.location.href = checkoutUrl;
-  };
-
   const handleCheckout = async () => {
-    handleSubscription(couponCode);
+    if (!user) return;
+    
+    setCheckoutLoading(true);
+    setError(null);
+    
+    try {
+      // Create checkout session using the Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('stripe-subscription', {
+        body: JSON.stringify({
+          user_id: user.id,
+          user_email: user.email,
+          return_url: window.location.origin + '/settings',
+          coupon_id: couponCode || undefined
+        })
+      });
+      
+      if (error) {
+        throw new Error(error.message || "Failed to create checkout session");
+      }
+      
+      if (!data?.url) {
+        throw new Error("Invalid response from server. Missing checkout URL.");
+      }
+      
+      // Redirect to Stripe checkout
+      window.location.href = data.url;
+    } catch (error) {
+      console.error("Checkout error:", error);
+      setError(`Failed to process checkout: ${error.message}`);
+      setCheckoutLoading(false);
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: error.message || "Failed to process checkout. Please try again."
+      });
+    }
   };
 
   const handleManageSubscription = async () => {
@@ -245,11 +268,14 @@ const Settings = () => {
     setShowSubscriptionDialog(true);
   };
 
-  const handlePricingAction = (action: "selectFree" | "checkout", tier: any) => {
+  const handlePricingAction = (action: "selectFree" | "checkout", tier: any, couponCode?: string) => {
     if (action === "selectFree") {
       setProfile({ ...profile, role: "applicant" });
       handleSave();
     } else if (action === "checkout") {
+      if (couponCode) {
+        setCouponCode(couponCode);
+      }
       handleEmployerSelect();
     }
   };
@@ -373,6 +399,19 @@ const Settings = () => {
                   <span className="mr-2">✓</span> Premium analytics dashboard
                 </li>
               </ul>
+            </div>
+            
+            <div className="mt-4">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                Discount Code
+              </label>
+              <Input
+                type="text"
+                placeholder="Enter coupon code"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value)}
+                className="mb-2"
+              />
             </div>
           </div>
           

@@ -8,6 +8,8 @@ import { CheckIcon, ChevronRightIcon } from "@radix-ui/react-icons"
 import { cn } from "@/lib/utils"
 import { useNavigate } from "react-router-dom"
 import { Input } from "@/components/ui/input"
+import { supabase } from "@/integrations/supabase/client"
+import { useToast } from "@/components/ui/use-toast"
 
 interface Feature {
   name: string
@@ -40,34 +42,60 @@ function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
   const [isYearly, setIsYearly] = useState(false)
   const navigate = useNavigate()
   const [couponCode, setCouponCode] = useState("")
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
 
-  const handleAction = (tier: PricingTier) => {
+  const handleAction = async (tier: PricingTier) => {
     if (tier.buttonAction && tier.buttonAction === "checkout") {
-      // Direct Stripe checkout using the specified price ID
-      const priceId = "price_1R74AOA1u9Lm91Tyrg2C0ooM";
-      let checkoutUrl = `https://checkout.stripe.com/c/pay/${priceId}?prefilled_email=${encodeURIComponent(sessionStorage.getItem('userEmail') || '')}`;
-      
-      // Add coupon code if provided
-      if (couponCode) {
-        checkoutUrl += `&coupon=${encodeURIComponent(couponCode)}`;
+      try {
+        setLoading(true);
+        
+        // Create checkout session using the Supabase Edge Function
+        const { data, error } = await supabase.functions.invoke('stripe-subscription', {
+          body: JSON.stringify({
+            user_id: sessionStorage.getItem('userId') || '',
+            user_email: sessionStorage.getItem('userEmail') || '',
+            return_url: window.location.origin + '/settings',
+            coupon_id: couponCode || undefined
+          })
+        });
+
+        if (error) {
+          console.error('Error creating checkout session:', error);
+          toast({
+            variant: "destructive",
+            title: "Checkout Error",
+            description: `Could not initialize checkout: ${error.message || 'Unknown error'}`,
+          });
+          setLoading(false);
+          return;
+        }
+
+        if (data?.url) {
+          // Redirect to Stripe checkout
+          window.location.href = data.url;
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Checkout Error",
+            description: "Could not initialize checkout. Please try again.",
+          });
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Checkout session error:', err);
+        toast({
+          variant: "destructive",
+          title: "Checkout Error",
+          description: `An unexpected error occurred: ${err.message || 'Unknown error'}`,
+        });
+        setLoading(false);
       }
-      
-      // Redirect to Stripe checkout
-      window.location.href = checkoutUrl;
       return;
     }
     
     if (onAction && tier.buttonAction) {
       onAction(tier.buttonAction, tier, couponCode);
-      
-      // If this is a checkout action, redirect to profile after the operation
-      if (tier.buttonAction === "checkout") {
-        // The actual redirect will happen in Settings.tsx after the checkout process completes
-        // This is just a fallback in case the redirect from Stripe doesn't work
-        setTimeout(() => {
-          navigate("/profile");
-        }, 1000);
-      }
     }
   }
 
@@ -228,10 +256,11 @@ function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
                       : buttonStyles.default,
                   )}
                   onClick={() => handleAction(tier)}
+                  disabled={loading}
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
-                    {tier.buttonText || (tier.highlight ? 'Subscribe Now' : 'Get Started')}
-                    <ChevronRightIcon className="w-4 h-4" />
+                    {loading && tier.buttonAction === "checkout" ? "Processing..." : (tier.buttonText || (tier.highlight ? 'Subscribe Now' : 'Get Started'))}
+                    {!loading && <ChevronRightIcon className="w-4 h-4" />}
                   </span>
                 </Button>
               </div>
