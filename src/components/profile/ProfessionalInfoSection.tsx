@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ProfessionalInfoSectionProps {
   profile: {
@@ -28,17 +29,18 @@ export const ProfessionalInfoSection = ({
   handleCVUpload,
 }: ProfessionalInfoSectionProps) => {
   const { t } = useLanguage();
+  const isMobile = useIsMobile();
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+      <CardHeader className={isMobile ? "p-4" : "p-6"}>
+        <CardTitle className="flex items-center gap-2 text-lg md:text-2xl">
           <Briefcase className="w-5 h-5" />
           {t("professionalInfo")}
         </CardTitle>
         <CardDescription>{t("professionalInfoDesc")}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className={`space-y-4 ${isMobile ? "p-4 pt-0" : "p-6 pt-0"}`}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-sm font-medium flex items-center gap-2">
@@ -50,6 +52,7 @@ export const ProfessionalInfoSection = ({
               accept=".pdf,.doc,.docx"
               onChange={handleCVUpload}
               disabled={uploading}
+              className="text-sm"
             />
             {profile.cv_url && (
               <a
@@ -75,7 +78,7 @@ export const ProfessionalInfoSection = ({
               placeholder="https://github.com/username"
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 md:col-span-1">
             <label className="text-sm font-medium flex items-center gap-2">
               <Linkedin className="w-4 h-4" />
               LinkedIn
@@ -93,4 +96,3 @@ export const ProfessionalInfoSection = ({
     </Card>
   );
 };
-

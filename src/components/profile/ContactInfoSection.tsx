@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ContactInfoSectionProps {
   profile: {
@@ -22,17 +23,18 @@ interface ContactInfoSectionProps {
 
 export const ContactInfoSection = ({ profile, setProfile, userEmail }: ContactInfoSectionProps) => {
   const { t } = useLanguage();
+  const isMobile = useIsMobile();
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+      <CardHeader className={isMobile ? "p-4" : "p-6"}>
+        <CardTitle className="flex items-center gap-2 text-lg md:text-2xl">
           <Phone className="w-5 h-5" />
           {t("contactInfo")}
         </CardTitle>
         <CardDescription>{t("contactInfoDesc")}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className={`space-y-4 ${isMobile ? "p-4 pt-0" : "p-6 pt-0"}`}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-sm font-medium flex items-center gap-2">
@@ -85,4 +87,3 @@ export const ContactInfoSection = ({ profile, setProfile, userEmail }: ContactIn
     </Card>
   );
 };
-
