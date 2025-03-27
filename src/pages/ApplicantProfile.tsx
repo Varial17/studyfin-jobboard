@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +12,7 @@ import { EducationSection } from "@/components/profile/EducationSection";
 import { ProfessionalInfoSection } from "@/components/profile/ProfessionalInfoSection";
 import { Navbar } from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const ApplicantProfile = () => {
   const { applicantId } = useParams();
@@ -18,6 +20,7 @@ const ApplicantProfile = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState({
     full_name: "",
@@ -96,12 +99,12 @@ const ApplicantProfile = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
       <Navbar />
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex gap-6">
+      <div className="container mx-auto px-4 py-4 md:py-8">
+        <div className={`flex ${isMobile ? 'flex-col' : 'flex-row gap-6'}`}>
           <ProfileSidebar />
-          <div className="flex-1 max-w-4xl space-y-6">
-            <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold">{profile.full_name}</h1>
+          <div className="flex-1 max-w-full md:max-w-4xl space-y-4 md:space-y-6">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 md:gap-0">
+              <h1 className="text-xl md:text-2xl font-bold">{profile.full_name}</h1>
               <Badge variant={profile.role === 'applicant' ? 'default' : 'secondary'}>
                 {profile.role === 'applicant' ? t('applicantRole') : t('employerRole')}
               </Badge>

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,12 +13,14 @@ import { BasicInfoSection } from "@/components/profile/BasicInfoSection";
 import { ContactInfoSection } from "@/components/profile/ContactInfoSection";
 import { EducationSection } from "@/components/profile/EducationSection";
 import { ProfessionalInfoSection } from "@/components/profile/ProfessionalInfoSection";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Profile = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -167,10 +170,10 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex gap-6">
+      <div className="container mx-auto px-4 py-4 md:py-8">
+        <div className={`flex ${isMobile ? 'flex-col' : 'flex-row gap-6'}`}>
           <ProfileSidebar />
-          <div className="flex-1 max-w-4xl space-y-6">
+          <div className="flex-1 max-w-full md:max-w-4xl space-y-4 md:space-y-6">
             <BasicInfoSection profile={profile} setProfile={setProfile} />
             <ContactInfoSection
               profile={profile}
@@ -184,11 +187,11 @@ const Profile = () => {
               uploading={uploading}
               handleCVUpload={handleCVUpload}
             />
-            <div className="flex justify-end">
+            <div className="flex justify-end pb-8">
               <Button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 w-full md:w-auto"
               >
                 <Save className="w-4 h-4" />
                 {saving ? t("saving") : t("saveProfile")}

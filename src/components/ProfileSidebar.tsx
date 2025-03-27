@@ -3,19 +3,24 @@ import { useAuth } from "@/contexts/AuthContext";
 import { User, Briefcase, Plus, Settings, LogOut, ClipboardList, LinkIcon } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Link } from "react-router-dom";
 
 // Admin email that's allowed to access Zoho features
 const ADMIN_EMAIL = "admin@yourdomain.com"; // Replace with your email
 
 export function ProfileSidebar() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [isLogoutHovered, setIsLogoutHovered] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [zohoConnected, setZohoConnected] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     if (user) {
@@ -49,21 +54,21 @@ export function ProfileSidebar() {
   // Base links for all users
   let links = [
     {
-      label: "Profile",
+      label: t("profile"),
       href: "/profile",
       icon: (
         <User className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
       ),
     },
     {
-      label: "My Jobs",
+      label: t("jobs") || "My Jobs",
       href: "/jobs",
       icon: (
         <Briefcase className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
       ),
     },
     {
-      label: "Applications",
+      label: "Applications", 
       href: "/applications",
       icon: (
         <ClipboardList className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
@@ -129,6 +134,33 @@ export function ProfileSidebar() {
     return <Sidebar><SidebarBody className="justify-center items-center"><p>Loading...</p></SidebarBody></Sidebar>;
   }
 
+  // For mobile, we adjust the sidebar behavior
+  if (isMobile) {
+    return (
+      <div className="md:hidden bg-white shadow rounded-lg mb-4 p-4">
+        <div className="flex flex-wrap gap-2 justify-center">
+          {links.map((link) => (
+            <Link 
+              key={link.label} 
+              to={link.href}
+              className="flex items-center gap-1 px-3 py-2 text-sm rounded-md bg-gray-50 hover:bg-gray-100 text-neutral-600"
+            >
+              {React.cloneElement(link.icon, { className: "h-4 w-4 text-primary" })}
+              <span>{link.label}</span>
+            </Link>
+          ))}
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-1 px-3 py-2 text-sm rounded-md bg-gray-50 hover:bg-gray-100 text-neutral-600"
+          >
+            <LogOut className="h-4 w-4 text-primary" />
+            <span>{t("logout") || "Logout"}</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Sidebar>
       <SidebarBody className="justify-between gap-10">
@@ -156,7 +188,7 @@ export function ProfileSidebar() {
               transition={{ duration: 0.2 }}
               className="text-neutral-600 dark:text-neutral-300 text-sm font-medium ml-3 whitespace-nowrap overflow-hidden"
             >
-              Logout
+              {t("logout") || "Logout"}
             </motion.span>
           </button>
         </nav>

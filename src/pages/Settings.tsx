@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -189,7 +188,6 @@ const Settings = () => {
     setError(null);
     
     try {
-      // Create checkout session using the Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('stripe-subscription', {
         body: JSON.stringify({
           user_id: user.id,
@@ -207,7 +205,6 @@ const Settings = () => {
         throw new Error("Invalid response from server. Missing checkout URL.");
       }
       
-      // Redirect to Stripe checkout
       window.location.href = data.url;
     } catch (error) {
       console.error("Checkout error:", error);
@@ -356,19 +353,6 @@ const Settings = () => {
                 </p>
                 
                 <PricingSectionDemo onAction={handlePricingAction} />
-                
-                <Card className="mt-8">
-                  <CardFooter className="justify-end pt-6">
-                    <Button
-                      onClick={handleSave}
-                      disabled={saving || profile.role === "employer"}
-                      className="flex items-center gap-2"
-                    >
-                      <Save className="w-4 h-4" />
-                      {saving ? t("saving") : "Save as Job Seeker"}
-                    </Button>
-                  </CardFooter>
-                </Card>
               </div>
             )}
           </div>
