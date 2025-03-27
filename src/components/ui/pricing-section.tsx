@@ -44,8 +44,11 @@ function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
   const [couponCode, setCouponCode] = useState("")
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleAction = async (tier: PricingTier) => {
+    setError(null);
+    
     if (tier.buttonAction && tier.buttonAction === "checkout") {
       try {
         setLoading(true);
@@ -62,6 +65,7 @@ function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
 
         if (error) {
           console.error('Error creating checkout session:', error);
+          setError(`Could not initialize checkout: ${error.message || 'Unknown error'}`);
           toast({
             variant: "destructive",
             title: "Checkout Error",
@@ -71,10 +75,23 @@ function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
           return;
         }
 
+        if (data?.error) {
+          console.error('Checkout session error:', data.error);
+          setError(data.error);
+          toast({
+            variant: "destructive",
+            title: "Checkout Error",
+            description: data.error,
+          });
+          setLoading(false);
+          return;
+        }
+
         if (data?.url) {
           // Redirect to Stripe checkout
           window.location.href = data.url;
         } else {
+          setError("Could not initialize checkout. Please try again.");
           toast({
             variant: "destructive",
             title: "Checkout Error",
@@ -84,6 +101,7 @@ function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
         }
       } catch (err) {
         console.error('Checkout session error:', err);
+        setError(`An unexpected error occurred: ${err.message || 'Unknown error'}`);
         toast({
           variant: "destructive",
           title: "Checkout Error",
@@ -151,6 +169,12 @@ function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
             ))}
           </div>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 border border-red-300 bg-red-50 text-red-700 rounded-md">
+            {error}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {tiers.map((tier) => (
