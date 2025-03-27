@@ -8,10 +8,11 @@ import { ProfileSidebar } from "@/components/ProfileSidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Save, CreditCard, AlertCircle } from "lucide-react";
+import { Save, CreditCard, AlertCircle, CheckCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { PricingSectionDemo } from "@/components/ui/pricing-section-demo";
+import { EmbeddedStripeCheckout } from "@/components/ui/embedded-stripe-checkout";
 
 const Settings = () => {
   const { user, refreshUser } = useAuth();
@@ -31,6 +32,8 @@ const Settings = () => {
   const [stripeRedirectHandled, setStripeRedirectHandled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [showEmbeddedCheckout, setShowEmbeddedCheckout] = useState(false);
+  const [subscriptionSuccess, setSubscriptionSuccess] = useState(false);
 
   useEffect(() => {
     const handleStripeRedirect = async () => {
@@ -311,6 +314,7 @@ const Settings = () => {
   const handleEmployerSelect = () => {
     setProfile({ ...profile, role: "employer" });
     setShowSubscriptionDialog(true);
+    setShowEmbeddedCheckout(true);
   };
 
   const handlePricingAction = (action: "selectFree" | "checkout", tier: any) => {
@@ -319,6 +323,41 @@ const Settings = () => {
       handleSave();
     } else if (action === "checkout") {
       handleEmployerSelect();
+    }
+  };
+
+  const handleSubscriptionSuccess = async () => {
+    setSubscriptionSuccess(true);
+    
+    if (user) {
+      try {
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update({
+            role: "employer", 
+            subscription_status: "active"
+          })
+          .eq("id", user.id);
+        
+        if (updateError) throw updateError;
+
+        await refreshUser();
+        
+        toast({
+          title: t("success"),
+          description: "Your employer subscription is now active. You can post unlimited job listings.",
+        });
+        
+        setShowSubscriptionDialog(false);
+        setProfile(prev => ({
+          ...prev,
+          role: "employer",
+          subscription_status: "active"
+        }));
+      } catch (error) {
+        console.error("Error updating profile after subscription:", error);
+        setError("Failed to update profile information. Please refresh the page.");
+      }
     }
   };
 
@@ -418,33 +457,49 @@ const Settings = () => {
       </div>
       
       <Dialog open={showSubscriptionDialog} onOpenChange={setShowSubscriptionDialog}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Employer Subscription Required</DialogTitle>
+            <DialogTitle>Employer Subscription</DialogTitle>
             <DialogDescription>
-              A subscription is required to access employer features, including posting unlimited job listings.
+              Subscribe to access employer features, including posting unlimited job listings.
             </DialogDescription>
           </DialogHeader>
           
           <div className="py-4">
-            <div className="rounded-lg border p-4">
-              <div className="font-medium">Employer Subscription</div>
-              <div className="text-2xl font-bold mt-2">$50/month</div>
-              <ul className="mt-4 space-y-2">
-                <li className="flex items-center">
-                  <span className="mr-2">✓</span> Post unlimited job listings
-                </li>
-                <li className="flex items-center">
-                  <span className="mr-2">✓</span> Access to all applicant profiles
-                </li>
-                <li className="flex items-center">
-                  <span className="mr-2">✓</span> Premium analytics dashboard
-                </li>
-              </ul>
-            </div>
+            {showEmbeddedCheckout ? (
+              subscriptionSuccess ? (
+                <Alert className="bg-green-50 border-green-200">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <AlertDescription className="text-green-700">
+                    Payment successful! Your subscription is now active.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <EmbeddedStripeCheckout 
+                  userId={user?.id || ''} 
+                  onSuccess={handleSubscriptionSuccess} 
+                />
+              )
+            ) : (
+              <div className="rounded-lg border p-4">
+                <div className="font-medium">Employer Subscription</div>
+                <div className="text-2xl font-bold mt-2">$50/month</div>
+                <ul className="mt-4 space-y-2">
+                  <li className="flex items-center">
+                    <span className="mr-2">✓</span> Post unlimited job listings
+                  </li>
+                  <li className="flex items-center">
+                    <span className="mr-2">✓</span> Access to all applicant profiles
+                  </li>
+                  <li className="flex items-center">
+                    <span className="mr-2">✓</span> Premium analytics dashboard
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
           
-          {error && (
+          {error && !showEmbeddedCheckout && (
             <Alert variant="destructive" className="mt-2">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
@@ -455,9 +510,14 @@ const Settings = () => {
             <Button variant="outline" onClick={closeDialog}>
               Cancel
             </Button>
-            <Button onClick={handleCheckout} disabled={checkoutLoading}>
-              {checkoutLoading ? "Processing..." : "Subscribe Now"}
-            </Button>
+            {!showEmbeddedCheckout && (
+              <Button 
+                onClick={() => setShowEmbeddedCheckout(true)} 
+                disabled={checkoutLoading}
+              >
+                {checkoutLoading ? "Processing..." : "Continue to Payment"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
