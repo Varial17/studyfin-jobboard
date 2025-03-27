@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -6,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { CheckIcon, ChevronRightIcon } from "@radix-ui/react-icons"
 import { cn } from "@/lib/utils"
 import { useNavigate } from "react-router-dom"
+import { Input } from "@/components/ui/input"
 
 interface Feature {
   name: string
@@ -31,16 +33,17 @@ interface PricingTier {
 interface PricingSectionProps {
   tiers: PricingTier[]
   className?: string
-  onAction?: (action: "selectFree" | "checkout", tier: PricingTier) => void
+  onAction?: (action: "selectFree" | "checkout", tier: PricingTier, couponCode?: string) => void
 }
 
 function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
   const [isYearly, setIsYearly] = useState(false)
   const navigate = useNavigate()
+  const [couponCode, setCouponCode] = useState("")
 
   const handleAction = (tier: PricingTier) => {
     if (onAction && tier.buttonAction) {
-      onAction(tier.buttonAction, tier);
+      onAction(tier.buttonAction, tier, couponCode);
     }
   }
 
@@ -179,6 +182,20 @@ function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
               </div>
 
               <div className="p-8 pt-0 mt-auto">
+                {tier.highlight && (
+                  <div className="mb-4">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                      Discount Code
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="Enter coupon code"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      className="mb-2"
+                    />
+                  </div>
+                )}
                 <Button
                   className={cn(
                     "w-full relative transition-all duration-300",

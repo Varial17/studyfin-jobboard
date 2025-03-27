@@ -42,11 +42,11 @@ serve(async (req) => {
     }
 
     // Main subscription endpoint (default)
-    const { user_id, return_url, user_email } = await req.json()
+    const { user_id, return_url, user_email, coupon_id } = await req.json()
     
     const userEmail = user_email || user_id; // Use user_email if provided, otherwise use user_id as email
 
-    console.log(`Request data: user_id=${user_id}, user_email=${userEmail}, return_url=${return_url}`)
+    console.log(`Request data: user_id=${user_id}, user_email=${userEmail}, return_url=${return_url}, coupon_id=${coupon_id || 'none'}`)
 
     if (!user_id) {
       throw new Error('user_id is required')
@@ -105,9 +105,9 @@ serve(async (req) => {
         });
         customerId = customer.id;
       }
-      
-      // Create a checkout session
-      const session = await stripe.checkout.sessions.create({
+
+      // Create checkout session options
+      const sessionOptions = {
         customer: customerId,
         line_items: [
           {
@@ -119,7 +119,30 @@ serve(async (req) => {
         success_url: `${return_url}?success=true&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${return_url}?success=false`,
         client_reference_id: user_id,
-      })
+        allow_promotion_codes: true, // Enable using promotion codes in the checkout
+      };
+
+      // If a specific coupon ID is provided, apply it automatically
+      if (coupon_id) {
+        console.log(`Applying coupon: ${coupon_id}`)
+        try {
+          // Verify the coupon exists and is valid
+          const coupon = await stripe.coupons.retrieve(coupon_id);
+          if (coupon) {
+            sessionOptions.discounts = [
+              {
+                coupon: coupon_id,
+              },
+            ];
+          }
+        } catch (couponError) {
+          console.warn(`Warning: Invalid coupon ID provided: ${coupon_id}. Proceeding without coupon.`);
+          // Continue without applying the coupon if it's invalid
+        }
+      }
+      
+      // Create a checkout session
+      const session = await stripe.checkout.sessions.create(sessionOptions);
 
       console.log(`Checkout session created: ${session.id}`)
 
