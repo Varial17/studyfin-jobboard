@@ -39,11 +39,12 @@ const CheckoutForm = ({ onSuccess, customerEmail }: { onSuccess: () => void, cus
     console.log("Processing payment...");
     
     try {
+      // Submit the form data to Stripe
       const { error: submitError } = await elements.submit();
       
       if (submitError) {
         console.error("Elements submission error:", submitError);
-        setErrorMessage(submitError.message);
+        setErrorMessage(submitError.message || "Failed to process your payment information");
         setProcessing(false);
         return;
       }
@@ -72,7 +73,7 @@ const CheckoutForm = ({ onSuccess, customerEmail }: { onSuccess: () => void, cus
       }
     } catch (err) {
       console.error("Exception during payment confirmation:", err);
-      setErrorMessage("An unexpected error occurred. Please try again.");
+      setErrorMessage("An unexpected error occurred. Please try again later.");
     } finally {
       setProcessing(false);
     }
@@ -157,7 +158,11 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
       
       console.log("Payment intent created successfully");
       setClientSecret(data.clientSecret);
-      setCustomerEmail(data.customerEmail || null);
+      
+      // Set customer email if it was returned from the server
+      if (data.customerEmail) {
+        setCustomerEmail(data.customerEmail);
+      }
     } catch (error) {
       console.error("Error creating checkout session:", error);
       setError(error.message || "Failed to initialize payment");
