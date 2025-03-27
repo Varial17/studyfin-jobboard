@@ -1,0 +1,14 @@
+
+# This file configures your Netlify deployment
+
+# The following redirect is necessary for SPAs using client-side routing
+# It forwards all requests to index.html, letting your React Router handle them
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Basic build settings
+[build]
+  publish = "dist"
+  command = "npm run build"
