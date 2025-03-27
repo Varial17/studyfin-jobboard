@@ -32,6 +32,29 @@ serve(async (req) => {
     
     console.log(`Creating payment intent for user: ${user_id} with price: ${priceId}`)
     
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') || '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    );
+    
+    // Fetch user email from profiles
+    const { data: userData, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user_id)
+      .single();
+      
+    if (userError || !userData) {
+      throw new Error(`Failed to get user data: ${userError?.message || 'User not found'}`)
+    }
+    
+    // Get auth user to get email
+    const { data: { user: authUser }, error: authError } = await supabase.auth.admin.getUserById(user_id);
+    
+    if (authError || !authUser || !authUser.email) {
+      throw new Error(`Failed to get user email: ${authError?.message || 'Email not found'}`)
+    }
+    
     // Retrieve the price to get the amount
     const price = await stripe.prices.retrieve(priceId)
     
@@ -42,7 +65,7 @@ serve(async (req) => {
     // Look up existing customer or create a new one
     let customerId
     const customers = await stripe.customers.list({
-      email: user_id,
+      email: authUser.email,
       limit: 1,
     })
     
@@ -51,7 +74,7 @@ serve(async (req) => {
       console.log(`Found existing customer: ${customerId}`)
     } else {
       const customer = await stripe.customers.create({
-        email: user_id,
+        email: authUser.email,
         metadata: { user_id }
       })
       customerId = customer.id

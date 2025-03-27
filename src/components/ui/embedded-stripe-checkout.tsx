@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState } from "react"
@@ -11,6 +12,7 @@ import {
   PaymentElement,
   useStripe,
   useElements,
+  StripeElementsOptions
 } from "@stripe/react-stripe-js"
 import { createPaymentIntent } from "@/services/payment"
 
@@ -154,10 +156,10 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
     );
   }
 
-  const options = {
+  const options: StripeElementsOptions = {
     clientSecret,
     appearance: {
-      theme: 'stripe' as const,
+      theme: 'stripe',
       variables: {
         colorPrimary: '#0284c7',
       },
