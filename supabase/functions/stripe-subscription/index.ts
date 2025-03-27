@@ -1,3 +1,4 @@
+
 // Follow us: https://twitter.com/supabase
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
@@ -41,9 +42,11 @@ serve(async (req) => {
     }
 
     // Main subscription endpoint (default)
-    const { user_id, return_url } = await req.json()
+    const { user_id, return_url, user_email } = await req.json()
+    
+    const userEmail = user_email || user_id; // Use user_email if provided, otherwise use user_id as email
 
-    console.log(`Request data: user_id=${user_id}, return_url=${return_url}`)
+    console.log(`Request data: user_id=${user_id}, user_email=${userEmail}, return_url=${return_url}`)
 
     if (!user_id) {
       throw new Error('user_id is required')
@@ -75,8 +78,33 @@ serve(async (req) => {
         console.warn(`WARNING: API key mode (${keyMode}) doesn't match Price ID mode (${priceMode}). This will cause errors.`);
       }
       
+      // Look up existing customer or create a new one with metadata
+      let customerId;
+      const customers = await stripe.customers.list({
+        email: userEmail,
+        limit: 1,
+      });
+      
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
+        // Update customer with user_id in metadata if not already set
+        if (!customers.data[0].metadata.user_id) {
+          await stripe.customers.update(customerId, {
+            metadata: { user_id: user_id }
+          });
+        }
+      } else {
+        // Create new customer with user_id in metadata
+        const customer = await stripe.customers.create({
+          email: userEmail,
+          metadata: { user_id: user_id }
+        });
+        customerId = customer.id;
+      }
+      
       // Create a checkout session
       const session = await stripe.checkout.sessions.create({
+        customer: customerId,
         line_items: [
           {
             price: priceId,
@@ -87,7 +115,6 @@ serve(async (req) => {
         success_url: `${return_url}?success=true&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${return_url}?success=false`,
         client_reference_id: user_id,
-        customer_email: user_id, // Using email as identifier
       })
 
       console.log(`Checkout session created: ${session.id}`)

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -173,7 +174,8 @@ const Settings = () => {
       
       const response = await supabase.functions.invoke('stripe-subscription', {
         body: JSON.stringify({
-          user_id: user.email,
+          user_id: user.id,
+          user_email: user.email,
           return_url: `${window.location.origin}/settings`
         })
       });
