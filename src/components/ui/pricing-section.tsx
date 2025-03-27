@@ -144,7 +144,7 @@ function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
   return (
     <section
       className={cn(
-        "relative bg-background text-foreground",
+        "relative bg-gray-50 text-foreground", // Changed from bg-background to bg-gray-50
         "py-6 md:py-12",
         "overflow-hidden",
         className,
