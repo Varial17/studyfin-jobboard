@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +13,7 @@ import { Save, CreditCard, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { PricingSectionDemo } from "@/components/ui/pricing-section-demo";
+import { Input } from "@/components/ui/input";
 
 const Settings = () => {
   const { user, refreshUser } = useAuth();
@@ -31,8 +33,14 @@ const Settings = () => {
   const [stripeRedirectHandled, setStripeRedirectHandled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState("");
 
   useEffect(() => {
+    if (user && user.email) {
+      sessionStorage.setItem('userEmail', user.email);
+      sessionStorage.setItem('userId', user.id);
+    }
+    
     const handleStripeRedirect = async () => {
       const url = new URL(window.location.href);
       const success = url.searchParams.get('success');
@@ -43,16 +51,15 @@ const Settings = () => {
         
         if (user) {
           try {
-            const { error: updateError } = await supabase
+            const { data: profileData, error: profileError } = await supabase
               .from("profiles")
               .update({
-                role: "employer", 
-                subscription_status: "active"
+                role: "employer"
               })
               .eq("id", user.id);
             
-            if (updateError) throw updateError;
-
+            if (profileError) throw profileError;
+            
             const { data, error } = await supabase
               .from("profiles")
               .select("role, subscription_status, subscription_id")
@@ -74,9 +81,11 @@ const Settings = () => {
                 title: t("success"),
                 description: "Your employer subscription is now active. You can post unlimited job listings.",
               });
+              
+              navigate("/profile");
             }
           } catch (error) {
-            console.error("Error updating profile after checkout:", error);
+            console.error("Error updating profile after subscription:", error);
             setError("Failed to update profile information. Please refresh the page.");
           }
         }
@@ -96,7 +105,7 @@ const Settings = () => {
     if (!stripeRedirectHandled) {
       handleStripeRedirect();
     }
-  }, [user, toast, stripeRedirectHandled, t, refreshUser]);
+  }, [user, toast, stripeRedirectHandled, t, navigate, refreshUser]);
 
   useEffect(() => {
     if (!user) {
@@ -173,95 +182,41 @@ const Settings = () => {
     }
   };
 
-  const handleSubscription = async (couponCode?: string) => {
-    setLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        throw new Error('You must be logged in to subscribe');
-      }
-
-      const { error, data } = await supabase.functions.invoke('stripe-subscription', {
-        body: {
-          user_id: session.user.id,
-          user_email: session.user.email,
-          return_url: `${window.location.origin}/settings`,
-          coupon_id: couponCode || undefined
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (data?.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error('No checkout URL returned');
-      }
-    } catch (error) {
-      console.error('Error starting subscription:', error);
-      toast({
-        title: 'Subscription Failed',
-        description: error.message || 'Could not start subscription. Please try again.',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCheckout = async () => {
     if (!user) return;
     
     setCheckoutLoading(true);
     setError(null);
-    setDebugInfo(null);
     
     try {
-      console.log("Calling Stripe subscription endpoint...");
-      
-      const response = await supabase.functions.invoke('stripe-subscription', {
+      // Create checkout session using the Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('stripe-subscription', {
         body: JSON.stringify({
           user_id: user.id,
           user_email: user.email,
-          return_url: `${window.location.origin}/settings`
+          return_url: window.location.origin + '/settings',
+          coupon_id: couponCode || undefined
         })
       });
       
-      console.log("Response from Stripe:", response);
-      
-      if (response.error) {
-        throw new Error(response.error);
+      if (error) {
+        throw new Error(error.message || "Failed to create checkout session");
       }
       
-      if (response.data && response.data.error) {
-        throw new Error(response.data.error);
-      }
-      
-      if (!response.data?.url) {
+      if (!data?.url) {
         throw new Error("Invalid response from server. Missing checkout URL.");
       }
       
-      window.location.href = response.data.url;
+      // Redirect to Stripe checkout
+      window.location.href = data.url;
     } catch (error) {
       console.error("Checkout error:", error);
-      
-      let errorMessage = error.message || "Unknown error";
-      let details = error.details || null;
-      
-      setError(errorMessage);
-      
-      if (details) {
-        setDebugInfo(details);
-      }
-      
+      setError(`Failed to process checkout: ${error.message}`);
       setCheckoutLoading(false);
       toast({
         variant: "destructive",
         title: t("error"),
-        description: "Failed to start checkout process. Please see the error details above."
+        description: error.message || "Failed to process checkout. Please try again."
       });
     }
   };
@@ -313,11 +268,14 @@ const Settings = () => {
     setShowSubscriptionDialog(true);
   };
 
-  const handlePricingAction = (action: "selectFree" | "checkout", tier: any) => {
+  const handlePricingAction = (action: "selectFree" | "checkout", tier: any, couponCode?: string) => {
     if (action === "selectFree") {
       setProfile({ ...profile, role: "applicant" });
       handleSave();
     } else if (action === "checkout") {
+      if (couponCode) {
+        setCouponCode(couponCode);
+      }
       handleEmployerSelect();
     }
   };
@@ -441,6 +399,19 @@ const Settings = () => {
                   <span className="mr-2">✓</span> Premium analytics dashboard
                 </li>
               </ul>
+            </div>
+            
+            <div className="mt-4">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                Discount Code
+              </label>
+              <Input
+                type="text"
+                placeholder="Enter coupon code"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value)}
+                className="mb-2"
+              />
             </div>
           </div>
           

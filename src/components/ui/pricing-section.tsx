@@ -8,6 +8,8 @@ import { CheckIcon, ChevronRightIcon } from "@radix-ui/react-icons"
 import { cn } from "@/lib/utils"
 import { useNavigate } from "react-router-dom"
 import { Input } from "@/components/ui/input"
+import { supabase } from "@/integrations/supabase/client"
+import { useToast } from "@/components/ui/use-toast"
 
 interface Feature {
   name: string
@@ -40,8 +42,76 @@ function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
   const [isYearly, setIsYearly] = useState(false)
   const navigate = useNavigate()
   const [couponCode, setCouponCode] = useState("")
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleAction = (tier: PricingTier) => {
+  const handleAction = async (tier: PricingTier) => {
+    setError(null);
+    
+    if (tier.buttonAction && tier.buttonAction === "checkout") {
+      try {
+        setLoading(true);
+        
+        // Create checkout session using the Supabase Edge Function
+        const { data, error } = await supabase.functions.invoke('stripe-subscription', {
+          body: JSON.stringify({
+            user_id: sessionStorage.getItem('userId') || '',
+            user_email: sessionStorage.getItem('userEmail') || '',
+            return_url: window.location.origin + '/settings',
+            coupon_id: couponCode || undefined
+          })
+        });
+
+        if (error) {
+          console.error('Error creating checkout session:', error);
+          setError(`Could not initialize checkout: ${error.message || 'Unknown error'}`);
+          toast({
+            variant: "destructive",
+            title: "Checkout Error",
+            description: `Could not initialize checkout: ${error.message || 'Unknown error'}`,
+          });
+          setLoading(false);
+          return;
+        }
+
+        if (data?.error) {
+          console.error('Checkout session error:', data.error);
+          setError(data.error);
+          toast({
+            variant: "destructive",
+            title: "Checkout Error",
+            description: data.error,
+          });
+          setLoading(false);
+          return;
+        }
+
+        if (data?.url) {
+          // Redirect to Stripe checkout
+          window.location.href = data.url;
+        } else {
+          setError("Could not initialize checkout. Please try again.");
+          toast({
+            variant: "destructive",
+            title: "Checkout Error",
+            description: "Could not initialize checkout. Please try again.",
+          });
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Checkout session error:', err);
+        setError(`An unexpected error occurred: ${err.message || 'Unknown error'}`);
+        toast({
+          variant: "destructive",
+          title: "Checkout Error",
+          description: `An unexpected error occurred: ${err.message || 'Unknown error'}`,
+        });
+        setLoading(false);
+      }
+      return;
+    }
+    
     if (onAction && tier.buttonAction) {
       onAction(tier.buttonAction, tier, couponCode);
     }
@@ -99,6 +169,12 @@ function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
             ))}
           </div>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 border border-red-300 bg-red-50 text-red-700 rounded-md">
+            {error}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {tiers.map((tier) => (
@@ -204,10 +280,11 @@ function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
                       : buttonStyles.default,
                   )}
                   onClick={() => handleAction(tier)}
+                  disabled={loading}
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
-                    {tier.buttonText || (tier.highlight ? 'Subscribe Now' : 'Get Started')}
-                    <ChevronRightIcon className="w-4 h-4" />
+                    {loading && tier.buttonAction === "checkout" ? "Processing..." : (tier.buttonText || (tier.highlight ? 'Subscribe Now' : 'Get Started'))}
+                    {!loading && <ChevronRightIcon className="w-4 h-4" />}
                   </span>
                 </Button>
               </div>

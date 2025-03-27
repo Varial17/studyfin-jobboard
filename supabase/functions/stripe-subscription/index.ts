@@ -1,12 +1,16 @@
-
 // Follow us: https://twitter.com/supabase
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { corsHeaders } from "../_shared/cors.ts"
 import Stripe from 'https://esm.sh/stripe@12.0.0?target=deno'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+// Initialize Stripe with more detailed error logging
+const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
+if (!stripeKey) {
+  console.error("ERROR: STRIPE_SECRET_KEY is not set in environment variables");
+}
+
+const stripe = new Stripe(stripeKey || '', {
   apiVersion: '2023-10-16',
   httpClient: Stripe.createFetchHttpClient(),
 });
@@ -21,7 +25,7 @@ serve(async (req) => {
 
   try {
     // Validate Stripe Key is present
-    if (!Deno.env.get('STRIPE_SECRET_KEY')) {
+    if (!stripeKey) {
       throw new Error('STRIPE_SECRET_KEY is not configured in environment variables. Please add it to your Supabase Edge Function secrets.');
     }
 
@@ -52,16 +56,13 @@ serve(async (req) => {
     }
 
     // Get the price ID from environment variables
-    const priceId = Deno.env.get('STRIPE_EMPLOYER_PRICE_ID')
-    if (!priceId) {
-      throw new Error('STRIPE_EMPLOYER_PRICE_ID is not configured in environment variables')
-    }
-
+    const priceId = "price_1R74AOA1u9Lm91Tyrg2C0ooM"
+    
     console.log(`Using price ID: ${priceId}`)
 
     try {
       // Check API key mode (test or live)
-      const keyMode = Deno.env.get('STRIPE_SECRET_KEY')?.startsWith('sk_test') ? 'test' : 'live';
+      const keyMode = stripeKey.startsWith('sk_test') ? 'test' : 'live';
       console.log(`API key mode: ${keyMode}`);
       
       // Check price ID mode (test or live)
@@ -79,32 +80,85 @@ serve(async (req) => {
       
       // Look up existing customer or create a new one with metadata
       let customerId;
-      const customers = await stripe.customers.list({
-        email: userEmail,
-        limit: 1,
-      });
+      let customerHasMaxSubscriptions = false;
       
-      if (customers.data.length > 0) {
-        customerId = customers.data[0].id;
-        // Update customer with user_id in metadata if not already set
-        if (!customers.data[0].metadata.user_id) {
-          await stripe.customers.update(customerId, {
-            metadata: { user_id: user_id }
-          });
-          console.log(`Updated existing customer ${customerId} with user_id ${user_id} metadata`);
-        }
-      } else {
-        // Create new customer with user_id in metadata
-        const customer = await stripe.customers.create({
+      try {
+        const customers = await stripe.customers.list({
           email: userEmail,
-          metadata: { user_id: user_id }
+          limit: 1,
         });
-        customerId = customer.id;
-        console.log(`Created new customer ${customerId} with user_id ${user_id} metadata`);
+        
+        if (customers.data.length > 0) {
+          customerId = customers.data[0].id;
+          // Update customer with user_id in metadata if not already set
+          if (!customers.data[0].metadata.user_id) {
+            await stripe.customers.update(customerId, {
+              metadata: { user_id: user_id }
+            });
+          }
+          
+          // Check if customer already has a subscription with this price
+          const subscriptions = await stripe.subscriptions.list({
+            customer: customerId,
+            price: priceId,
+            status: 'active',
+            limit: 1
+          });
+          
+          if (subscriptions.data.length > 0) {
+            return new Response(
+              JSON.stringify({
+                error: "You already have an active subscription for this product."
+              }),
+              {
+                status: 400,
+                headers: {
+                  ...corsHeaders,
+                  'Content-Type': 'application/json',
+                }
+              }
+            );
+          }
+        } else {
+          // Create new customer with user_id in metadata
+          try {
+            const customer = await stripe.customers.create({
+              email: userEmail,
+              metadata: { user_id: user_id }
+            });
+            customerId = customer.id;
+          } catch (createCustomerError) {
+            console.error(`Error creating customer: ${JSON.stringify(createCustomerError)}`);
+            throw createCustomerError;
+          }
+        }
+      } catch (customerError) {
+        if (customerError.code === 'customer_max_subscriptions') {
+          customerHasMaxSubscriptions = true;
+          console.warn(`Customer ${userEmail} has reached the maximum number of subscriptions.`);
+        } else {
+          console.error(`Error retrieving/creating customer: ${JSON.stringify(customerError)}`);
+          throw customerError;
+        }
+      }
+      
+      if (customerHasMaxSubscriptions) {
+        return new Response(
+          JSON.stringify({
+            error: "You have reached the maximum number of subscriptions allowed. Please contact support."
+          }),
+          {
+            status: 400,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json',
+            }
+          }
+        );
       }
 
       // Create checkout session options
-      const sessionOptions: any = {
+      const sessionOptions = {
         customer: customerId,
         line_items: [
           {
@@ -115,7 +169,7 @@ serve(async (req) => {
         mode: 'subscription',
         success_url: `${return_url}?success=true&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${return_url}?success=false`,
-        client_reference_id: user_id, // Include user_id as reference for webhook
+        client_reference_id: user_id,
         allow_promotion_codes: true, // Enable using promotion codes in the checkout
       };
 
@@ -156,13 +210,29 @@ serve(async (req) => {
     } catch (stripeError) {
       console.error(`Stripe API Error: ${JSON.stringify(stripeError)}`)
       
+      // Handle customer max subscriptions error specifically
+      if (stripeError.code === 'customer_max_subscriptions') {
+        return new Response(
+          JSON.stringify({
+            error: "You have reached the maximum number of subscriptions allowed. Please contact support."
+          }),
+          {
+            status: 400,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json',
+            }
+          }
+        );
+      }
+      
       // Price ID format validation
       if (priceId && !priceId.startsWith('price_')) {
         throw new Error(`Invalid price ID format: ${priceId}. Price IDs should start with 'price_' not 'prod_'. Please check your STRIPE_EMPLOYER_PRICE_ID environment variable.`);
       }
       
       // Mode mismatch handling
-      const keyMode = Deno.env.get('STRIPE_SECRET_KEY')?.startsWith('sk_test') ? 'test' : 'live';
+      const keyMode = stripeKey.startsWith('sk_test') ? 'test' : 'live';
       const priceMode = priceId && priceId.startsWith('price_test') ? 'test' : 'live';
       
       if (keyMode !== priceMode) {
@@ -203,6 +273,9 @@ serve(async (req) => {
       statusCode = 400;
     } else if (error.message.includes('Invalid price ID format')) {
       errorMessage = error.message;
+      statusCode = 400;
+    } else if (error.message.includes('customer_max_subscriptions') || error.message.includes('already has 500 active subscription')) {
+      errorMessage = "You have reached the maximum number of subscriptions allowed. Please contact support.";
       statusCode = 400;
     }
     

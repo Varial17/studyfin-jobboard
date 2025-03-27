@@ -19,13 +19,13 @@ export const Navbar = () => {
   return (
     <nav className="bg-white shadow-sm">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-        <Link to="/">
+        <a href="https://studyfin.com.au/" target="_blank" rel="noopener noreferrer">
           <img 
             src="/lovable-uploads/b6036afc-422e-4dc6-bdc2-936db28c6bc2.png" 
             alt="StudyFin Logo" 
             className="h-8"
           />
-        </Link>
+        </a>
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
