@@ -139,15 +139,15 @@ const JobApplication = () => {
 
       if (error) throw error;
 
-      // Check if employer has Zoho connected
-      const { data: employerProfile } = await supabase
+      // Check if system has Zoho connected (through admin user)
+      const { data: adminProfile } = await supabase
         .from("profiles")
         .select("zoho_connected")
         .eq("id", job.employer_id)
         .single();
 
-      // If Zoho is connected, sync the application
-      if (employerProfile?.zoho_connected) {
+      // If Zoho is connected to the system, sync the application
+      if (adminProfile?.zoho_connected) {
         try {
           await supabase.functions.invoke('sync-job-application', {
             body: { applicationId: application.id }

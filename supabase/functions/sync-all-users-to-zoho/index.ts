@@ -12,15 +12,22 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  console.log("sync-all-users-to-zoho function called");
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log("Handling OPTIONS request for CORS");
     return new Response(null, { headers: corsHeaders });
   }
   
   try {
-    const { employerId } = await req.json();
+    const requestBody = await req.json();
+    console.log("Request body:", JSON.stringify(requestBody));
+    
+    const { employerId } = requestBody;
     
     if (!employerId) {
+      console.error("Error: Employer ID is required");
       throw new Error('Employer ID is required');
     }
     
@@ -29,13 +36,17 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Error: Supabase credentials are not set");
       throw new Error('Supabase credentials are not set');
     }
+    
+    console.log(`Initializing Supabase client with URL: ${supabaseUrl.substring(0, 10)}...`);
     
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Get employer's Zoho credentials
+    console.log(`Fetching Zoho credentials for employer: ${employerId}`);
     const { data: employerData, error: empError } = await supabase
       .from('zoho_credentials')
       .select('*')
@@ -43,12 +54,16 @@ serve(async (req) => {
       .single();
       
     if (empError) {
+      console.error("Error fetching Zoho credentials:", empError);
       throw empError;
     }
     
     if (!employerData || !employerData.access_token) {
+      console.error("Error: Employer not connected to Zoho CRM");
       throw new Error('Employer not connected to Zoho CRM');
     }
+    
+    console.log("Successfully fetched Zoho credentials");
     
     // Check if token needs refresh
     let accessToken = employerData.access_token;
@@ -60,6 +75,13 @@ serve(async (req) => {
       
       const clientId = Deno.env.get('ZOHO_CLIENT_ID');
       const clientSecret = Deno.env.get('ZOHO_CLIENT_SECRET');
+      
+      if (!clientId || !clientSecret) {
+        console.error("Error: Zoho API credentials not found in environment");
+        throw new Error('Zoho API credentials not found');
+      }
+      
+      console.log(`Refreshing token with client ID: ${clientId.substring(0, 5)}...`);
       
       const refreshResponse = await fetch('https://accounts.zoho.com/oauth/v2/token', {
         method: 'POST',
@@ -77,8 +99,11 @@ serve(async (req) => {
       const refreshData = await refreshResponse.json();
       
       if (!refreshResponse.ok || !refreshData.access_token) {
+        console.error("Error refreshing token:", refreshData);
         throw new Error('Failed to refresh Zoho access token');
       }
+      
+      console.log("Successfully refreshed Zoho access token");
       
       // Update token in database
       const { error: updateError } = await supabase
@@ -90,23 +115,30 @@ serve(async (req) => {
         .eq('user_id', employerId);
         
       if (updateError) {
+        console.error("Error updating token in database:", updateError);
         throw updateError;
       }
       
       accessToken = refreshData.access_token;
+      console.log("Updated token in database");
     }
     
     // Get all profiles with role=applicant
+    console.log("Fetching applicants from database");
     const { data: applicants, error: applicantsError } = await supabase
       .from('profiles')
       .select('*')
       .eq('role', 'applicant');
     
     if (applicantsError) {
+      console.error("Error fetching applicants:", applicantsError);
       throw applicantsError;
     }
     
+    console.log(`Found ${applicants?.length || 0} applicants to sync`);
+    
     if (!applicants || applicants.length === 0) {
+      console.log("No applicants found to sync");
       return new Response(JSON.stringify({ 
         success: true,
         message: 'No applicants found to sync',
@@ -120,6 +152,7 @@ serve(async (req) => {
     }
     
     // Prepare leads data
+    console.log("Preparing leads data for Zoho CRM");
     const leads = applicants.map(applicant => ({
       Last_Name: applicant.full_name || "Job Applicant",
       First_Name: applicant.full_name?.split(' ')[0] || "",
@@ -134,29 +167,39 @@ serve(async (req) => {
     const batchSize = 100;
     const results = [];
     
+    console.log(`Sending ${leads.length} leads to Zoho CRM in batches of ${batchSize}`);
+    
     for (let i = 0; i < leads.length; i += batchSize) {
       const batch = leads.slice(i, i + batchSize);
+      console.log(`Processing batch ${i/batchSize + 1} with ${batch.length} leads`);
       
-      const zohoResponse = await fetch('https://www.zohoapis.com/crm/v2/Leads', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Zoho-oauthtoken ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ data: batch }),
-      });
-      
-      const zohoResult = await zohoResponse.json();
-      
-      if (!zohoResponse.ok) {
-        console.error('Zoho API error:', zohoResult);
-        throw new Error(`Failed to create leads in Zoho CRM: ${JSON.stringify(zohoResult)}`);
+      try {
+        const zohoResponse = await fetch('https://www.zohoapis.com/crm/v2/Leads', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Zoho-oauthtoken ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ data: batch }),
+        });
+        
+        const zohoResult = await zohoResponse.json();
+        
+        if (!zohoResponse.ok) {
+          console.error('Zoho API error:', zohoResult);
+          throw new Error(`Failed to create leads in Zoho CRM: ${JSON.stringify(zohoResult)}`);
+        }
+        
+        console.log(`Successfully processed batch ${i/batchSize + 1}`);
+        results.push(zohoResult);
+      } catch (error) {
+        console.error(`Error in batch ${i/batchSize + 1}:`, error);
+        throw error;
       }
-      
-      results.push(zohoResult);
       
       // Small delay to avoid rate limits
       if (i + batchSize < leads.length) {
+        console.log("Adding delay between batches to avoid rate limits");
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
@@ -189,3 +232,4 @@ serve(async (req) => {
     });
   }
 })
+

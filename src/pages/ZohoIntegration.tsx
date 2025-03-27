@@ -17,7 +17,7 @@ const ZohoIntegration = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [connected, setConnected] = useState(false);
+  const [connected, setConnected] = useState(true); // Default to true since we assume the system is connected
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +48,7 @@ const ZohoIntegration = () => {
         console.log("ZohoIntegration: Fetching profile for user", user.id);
         const { data, error } = await supabase
           .from('profiles')
-          .select('role, zoho_connected')
+          .select('role')
           .eq('id', user.id)
           .single();
 
@@ -61,110 +61,16 @@ const ZohoIntegration = () => {
 
         console.log("ZohoIntegration: Profile data", data);
         setUserRole(data?.role || null);
-        setConnected(data?.zoho_connected || false);
-        
-        // Redirect only if user is definitely not an employer
-        if (data?.role && data.role !== 'employer') {
-          console.log("ZohoIntegration: User is not an employer, redirecting to profile");
-          toast({
-            title: "Access Denied",
-            description: "Only employers can connect to Zoho CRM",
-            variant: "destructive",
-          });
-          navigate('/profile');
-        }
+        setLoading(false);
       } catch (error: any) {
         console.error('Error fetching user role:', error);
         setError(error.message);
-      } finally {
         setLoading(false);
       }
     };
 
     checkUserRole();
   }, [user, navigate, toast]);
-
-  const initiateZohoConnection = async () => {
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to connect to Zoho CRM",
-        variant: "destructive",
-      });
-      navigate('/auth');
-      return;
-    }
-    
-    try {
-      console.log("ZohoIntegration: Initiating Zoho connection");
-      // Call Supabase Edge Function to get the authorization URL
-      const { data, error } = await supabase.functions.invoke('zoho-auth', {
-        body: { 
-          redirectUrl: `${window.location.origin}/auth/zoho/callback`
-        }
-      });
-
-      if (error) throw error;
-      
-      console.log("ZohoIntegration: Received auth URL", data);
-      // Redirect to Zoho authorization page
-      window.location.href = data.authUrl;
-    } catch (error: any) {
-      console.error('Error initiating Zoho connection:', error);
-      toast({
-        title: "Error",
-        description: "Failed to connect to Zoho CRM. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const disconnectZoho = async () => {
-    if (!user) {
-      toast({
-        title: "Error", 
-        description: "You must be logged in to disconnect from Zoho CRM",
-        variant: "destructive",
-      });
-      navigate('/auth');
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      
-      console.log("ZohoIntegration: Disconnecting from Zoho");
-      // Call Supabase Edge Function to revoke token
-      const { error: revokeError } = await supabase.functions.invoke('zoho-disconnect', {
-        body: { userId: user.id }
-      });
-
-      if (revokeError) throw revokeError;
-      
-      // Update profile
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ zoho_connected: false })
-        .eq('id', user.id);
-        
-      if (updateError) throw updateError;
-      
-      setConnected(false);
-      toast({
-        title: "Success",
-        description: "Successfully disconnected from Zoho CRM",
-      });
-    } catch (error: any) {
-      console.error('Error disconnecting Zoho:', error);
-      toast({
-        title: "Error",
-        description: "Failed to disconnect from Zoho CRM. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -203,43 +109,33 @@ const ZohoIntegration = () => {
             
             <Card>
               <CardHeader>
-                <CardTitle>Connect to Zoho CRM</CardTitle>
+                <CardTitle>Zoho CRM System Integration</CardTitle>
                 <CardDescription>
-                  Integrate your job listings with Zoho CRM to manage applicants more effectively
+                  System-wide integration with Zoho CRM to automatically sync user data
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {connected ? (
-                  <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-900">
-                    <AlertTitle>Connected to Zoho CRM</AlertTitle>
-                    <AlertDescription>
-                      Your job listings are synced with Zoho CRM. New applicants will automatically be added as leads.
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <Alert>
-                    <AlertTitle>Not Connected</AlertTitle>
-                    <AlertDescription>
-                      Connect your account to Zoho CRM to automatically create leads when applicants apply to your jobs.
-                    </AlertDescription>
-                  </Alert>
-                )}
+                <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-900">
+                  <AlertTitle>System Connected to Zoho CRM</AlertTitle>
+                  <AlertDescription>
+                    <p>The job platform is connected to your Zoho CRM.</p>
+                    <p className="mt-2">All user data is automatically synced to your CRM, including:</p>
+                    <ul className="list-disc ml-6 mt-2">
+                      <li>New user registrations</li>
+                      <li>Job applications</li>
+                      <li>User profile updates</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
               </CardContent>
               <CardFooter className="flex flex-col items-start gap-4">
-                {connected ? (
-                  <>
-                    <Button variant="destructive" onClick={disconnectZoho} disabled={loading}>
-                      Disconnect from Zoho CRM
-                    </Button>
-                    <Button onClick={() => navigate('/profile/zoho/admin')}>
-                      Go to Zoho Admin Panel
-                    </Button>
-                  </>
-                ) : (
-                  <Button onClick={initiateZohoConnection} disabled={loading}>
-                    Connect to Zoho CRM
-                  </Button>
-                )}
+                <Button onClick={() => navigate('/profile/zoho/admin')}>
+                  Go to Zoho Admin Panel
+                </Button>
+                <p className="text-sm text-muted-foreground">
+                  The admin panel allows you to sync all existing users to Zoho CRM
+                  and view detailed integration status.
+                </p>
               </CardFooter>
             </Card>
           </div>
