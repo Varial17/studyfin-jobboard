@@ -7,6 +7,7 @@
   from = "/*"
   to = "/index.html"
   status = 200
+  force = true
 
 # Basic build settings
 [build]
@@ -16,13 +17,6 @@
 # Set environment variables for production
 [build.environment]
   NODE_VERSION = "18"
-
-# Handle trailing slashes consistently
-[[redirects]]
-  from = "/*/"
-  to = "/:splat"
-  status = 301
-  force = true
 
 # Add cache control for static assets
 [[headers]]

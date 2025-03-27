@@ -46,17 +46,26 @@ const ApplicantProfile = () => {
     const fetchApplicantProfile = async () => {
       try {
         setLoading(true);
+        console.log("Fetching applicant profile for ID:", applicantId);
+        
+        if (!applicantId) {
+          throw new Error("Applicant ID is missing");
+        }
+        
         const { data, error } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", applicantId)
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error fetching applicant profile:", error);
+          throw error;
+        }
         
         if (data) {
+          console.log("Applicant profile data retrieved:", data);
           setProfile({
-            ...profile,
             full_name: data.full_name || "",
             title: data.title || "",
             bio: data.bio || "",
@@ -74,7 +83,7 @@ const ApplicantProfile = () => {
           });
         }
       } catch (error: any) {
-        console.error("Error fetching applicant profile:", error);
+        console.error("Applicant profile fetch error:", error);
         toast({
           variant: "destructive",
           title: t("error"),
@@ -90,8 +99,8 @@ const ApplicantProfile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <span className="text-lg">{t("loading")}</span>
+      <div className="min-h-screen bg-gray-50 dark:bg-neutral-900 flex items-center justify-center">
+        <span className="text-lg">{t("loading")}...</span>
       </div>
     );
   }
@@ -100,11 +109,11 @@ const ApplicantProfile = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
       <Navbar />
       <div className="container mx-auto px-4 py-8">
-        <div className="flex gap-6">
+        <div className="flex flex-col md:flex-row gap-6">
           <ProfileSidebar />
           <div className="flex-1 max-w-4xl space-y-6">
             <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold">{profile.full_name}</h1>
+              <h1 className="text-2xl font-bold">{profile.full_name || t("unnamed")}</h1>
               <Badge variant={profile.role === 'applicant' ? 'default' : 'secondary'}>
                 {profile.role === 'applicant' ? t('applicantRole') : t('employerRole')}
               </Badge>
