@@ -91,7 +91,8 @@ serve(async (req) => {
         }
         
         if (subscriptionStatus) {
-          // Update the user's profile with subscription information
+          // Update the user's profile with subscription information and set role to employer
+          // Always set role to employer if subscription is active
           const { data, error } = await supabaseClient
             .from('profiles')
             .update({
@@ -107,7 +108,31 @@ serve(async (req) => {
           }
           
           console.log(`Updated subscription status for user: ${subscriptionStatus}`)
+          console.log(`Updated user role to: ${subscriptionStatus === 'active' ? 'employer' : 'applicant'}`)
         }
+      }
+    } else if (event.type === 'checkout.session.completed') {
+      // Handle one-time checkout completion events
+      const session = event.data.object
+      
+      if (session.customer && session.client_reference_id) {
+        console.log(`Processing checkout completion for user ID: ${session.client_reference_id}`)
+        
+        // Update the user's profile to employer role
+        const { data, error } = await supabaseClient
+          .from('profiles')
+          .update({
+            role: 'employer',
+            subscription_status: 'active'
+          })
+          .eq('id', session.client_reference_id)
+        
+        if (error) {
+          console.error('Error updating user profile after checkout:', error)
+          throw error
+        }
+        
+        console.log(`Updated user role to employer after successful checkout`)
       }
     }
 

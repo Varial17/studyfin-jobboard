@@ -118,7 +118,7 @@ serve(async (req) => {
         mode: 'subscription',
         success_url: `${return_url}?success=true&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${return_url}?success=false`,
-        client_reference_id: user_id,
+        client_reference_id: user_id, // Include user_id as reference for webhook
         allow_promotion_codes: true, // Enable using promotion codes in the checkout
       };
 
