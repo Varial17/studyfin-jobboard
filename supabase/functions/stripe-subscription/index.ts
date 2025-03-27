@@ -4,14 +4,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { corsHeaders } from "../_shared/cors.ts"
 import Stripe from 'https://esm.sh/stripe@12.0.0?target=deno'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
-// Initialize Stripe with more detailed error logging
-const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
-if (!stripeKey) {
-  console.error("ERROR: STRIPE_SECRET_KEY is not set in environment variables");
-}
-
-const stripe = new Stripe(stripeKey || '', {
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
   httpClient: Stripe.createFetchHttpClient(),
 });
@@ -26,7 +21,7 @@ serve(async (req) => {
 
   try {
     // Validate Stripe Key is present
-    if (!stripeKey) {
+    if (!Deno.env.get('STRIPE_SECRET_KEY')) {
       throw new Error('STRIPE_SECRET_KEY is not configured in environment variables. Please add it to your Supabase Edge Function secrets.');
     }
 
@@ -66,7 +61,7 @@ serve(async (req) => {
 
     try {
       // Check API key mode (test or live)
-      const keyMode = stripeKey.startsWith('sk_test') ? 'test' : 'live';
+      const keyMode = Deno.env.get('STRIPE_SECRET_KEY')?.startsWith('sk_test') ? 'test' : 'live';
       console.log(`API key mode: ${keyMode}`);
       
       // Check price ID mode (test or live)
@@ -96,6 +91,7 @@ serve(async (req) => {
           await stripe.customers.update(customerId, {
             metadata: { user_id: user_id }
           });
+          console.log(`Updated existing customer ${customerId} with user_id ${user_id} metadata`);
         }
       } else {
         // Create new customer with user_id in metadata
@@ -104,10 +100,11 @@ serve(async (req) => {
           metadata: { user_id: user_id }
         });
         customerId = customer.id;
+        console.log(`Created new customer ${customerId} with user_id ${user_id} metadata`);
       }
 
       // Create checkout session options
-      const sessionOptions = {
+      const sessionOptions: any = {
         customer: customerId,
         line_items: [
           {
@@ -118,7 +115,7 @@ serve(async (req) => {
         mode: 'subscription',
         success_url: `${return_url}?success=true&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${return_url}?success=false`,
-        client_reference_id: user_id,
+        client_reference_id: user_id, // Include user_id as reference for webhook
         allow_promotion_codes: true, // Enable using promotion codes in the checkout
       };
 
@@ -165,7 +162,7 @@ serve(async (req) => {
       }
       
       // Mode mismatch handling
-      const keyMode = stripeKey.startsWith('sk_test') ? 'test' : 'live';
+      const keyMode = Deno.env.get('STRIPE_SECRET_KEY')?.startsWith('sk_test') ? 'test' : 'live';
       const priceMode = priceId && priceId.startsWith('price_test') ? 'test' : 'live';
       
       if (keyMode !== priceMode) {
