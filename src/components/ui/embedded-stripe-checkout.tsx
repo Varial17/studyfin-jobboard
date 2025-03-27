@@ -12,8 +12,8 @@ import {
   PaymentElement,
   useStripe,
   useElements,
-  StripeElementsOptions
 } from "@stripe/react-stripe-js"
+import { StripeElementsOptions } from "@stripe/stripe-js"
 import { createPaymentIntent } from "@/services/payment"
 
 // Initialize Stripe with your publishable key
