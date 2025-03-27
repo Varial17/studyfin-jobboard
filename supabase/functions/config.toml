@@ -1,7 +1,11 @@
 
-# Follow this guide to configure your Edge Functions: https://supabase.com/docs/guides/functions/config
-
 project_id = "nluwegaxtjekbpccjuxt"
 
-[functions.stripe-webhook]
-verify_jwt = false
+[global.env]
+SUPABASE_URL = "env:SUPABASE_URL"
+SUPABASE_SERVICE_ROLE_KEY = "env:SUPABASE_SERVICE_ROLE_KEY"
+ZOHO_CLIENT_ID = "1000.3S7ZZ1UUOBK9LM2JB1F6FI3GCB1QZN"
+ZOHO_CLIENT_SECRET = "env:ZOHO_CLIENT_SECRET"
+STRIPE_SECRET_KEY = "env:STRIPE_SECRET_KEY"
+STRIPE_EMPLOYER_PRICE_ID = "env:STRIPE_EMPLOYER_PRICE_ID" 
+STRIPE_WEBHOOK_SECRET = "env:STRIPE_WEBHOOK_SECRET"
