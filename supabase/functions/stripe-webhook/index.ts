@@ -1,4 +1,3 @@
-
 // Follow us: https://twitter.com/supabase
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
@@ -6,26 +5,32 @@ import { corsHeaders } from "../_shared/cors.ts"
 import Stripe from 'https://esm.sh/stripe@12.0.0?target=deno'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
+console.log("Stripe Webhook Handler Initializing...")
+
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
   httpClient: Stripe.createFetchHttpClient(),
 });
 
-console.log("Stripe Webhook Handler Initialized")
-
 serve(async (req) => {
+  console.log(`Webhook request received: ${req.method} ${req.url}`)
+  console.log(`Headers present: ${[...req.headers.keys()].join(', ')}`)
+  
   // CORS preflight
   if (req.method === 'OPTIONS') {
+    console.log('Responding to OPTIONS request with CORS headers')
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
+    console.log('Processing webhook request')
+    
     // Get the signature from the headers
     const signature = req.headers.get('stripe-signature')
     
     if (!signature) {
-      console.error('Missing Stripe signature in headers')
-      console.log('Headers received:', Object.fromEntries([...req.headers.entries()]))
+      console.error('⚠️ ERROR: Missing Stripe signature in headers')
+      console.log('All headers received:', JSON.stringify(Object.fromEntries([...req.headers.entries()])))
       return new Response(
         JSON.stringify({ error: 'Missing Stripe signature' }),
         {
@@ -38,7 +43,7 @@ serve(async (req) => {
     // Get the webhook secret from environment variables
     const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')
     if (!webhookSecret) {
-      console.error('Missing STRIPE_WEBHOOK_SECRET environment variable')
+      console.error('⚠️ ERROR: Missing STRIPE_WEBHOOK_SECRET environment variable')
       return new Response(
         JSON.stringify({ error: 'Missing STRIPE_WEBHOOK_SECRET environment variable' }),
         {
@@ -51,21 +56,21 @@ serve(async (req) => {
     // Get request body as text for signature verification
     const body = await req.text()
     
-    // Log minimal request information for debugging
-    console.log(`Webhook request received: ${req.method}`)
-    console.log(`Headers present: ${[...req.headers.keys()].join(', ')}`)
-    console.log(`Signature length: ${signature ? signature.length : 'missing'}`)
+    console.log(`Signature received, length: ${signature.length}`)
+    console.log(`Webhook secret available, length: ${webhookSecret.length}`)
     
     // Verify webhook signature and extract the event
     let event
     try {
+      console.log('Attempting to construct Stripe event...')
       event = stripe.webhooks.constructEvent(
         body,
         signature,
         webhookSecret
       )
+      console.log(`✅ Successfully constructed Stripe event: ${event.type}`)
     } catch (err) {
-      console.error(`Webhook signature verification failed: ${err.message}`)
+      console.error(`⚠️ ERROR: Webhook signature verification failed: ${err.message}`)
       return new Response(
         JSON.stringify({ error: 'Webhook signature verification failed', details: err.message }),
         {
@@ -75,19 +80,32 @@ serve(async (req) => {
       )
     }
 
-    console.log(`Stripe webhook received: ${event.type}`)
+    console.log(`Processing Stripe webhook event: ${event.type}`)
     
     // Initialize Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('⚠️ ERROR: Missing Supabase credentials')
+      return new Response(
+        JSON.stringify({ error: 'Missing Supabase credentials' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+    
+    console.log('Initializing Supabase client')
+    const supabaseClient = createClient(supabaseUrl, supabaseKey)
     
     // Handle specific event types
     if (event.type === 'customer.subscription.created') {
       const subscription = event.data.object
       
       // Get customer data to match with user
+      console.log(`Retrieving customer information for ID: ${subscription.customer}`)
       const customer = await stripe.customers.retrieve(subscription.customer)
       console.log(`Processing subscription created event for customer: ${customer.email}`)
       
@@ -154,12 +172,12 @@ serve(async (req) => {
           .eq('id', userId)
         
         if (error) {
-          console.error('Error updating user profile:', error)
+          console.error('⚠️ ERROR: Error updating user profile:', error)
           throw error
         }
         
-        console.log(`Successfully updated subscription status for user ${userId} to ${subscriptionStatus}`)
-        console.log(`Updated user role to: ${subscriptionStatus === 'active' ? 'employer' : 'applicant'}`)
+        console.log(`✅ Successfully updated subscription status for user ${userId} to ${subscriptionStatus}`)
+        console.log(`✅ Updated user role to: ${subscriptionStatus === 'active' ? 'employer' : 'applicant'}`)
         
         // Update the customer with user_id metadata if it's not set
         if (!customer.metadata.user_id) {
@@ -167,13 +185,13 @@ serve(async (req) => {
             await stripe.customers.update(customer.id, {
               metadata: { user_id: userId }
             });
-            console.log(`Updated Stripe customer with user_id metadata: ${userId}`)
+            console.log(`✅ Updated Stripe customer with user_id metadata: ${userId}`)
           } catch (updateError) {
-            console.error('Error updating customer metadata:', updateError)
+            console.error('⚠️ ERROR: Error updating customer metadata:', updateError)
           }
         }
       } else {
-        console.error('Unable to find user ID for customer:', customer.id, customer.email)
+        console.error('⚠️ ERROR: Unable to find user ID for customer:', customer.id, customer.email)
       }
     } 
     else if (event.type === 'customer.subscription.updated') {
@@ -279,12 +297,14 @@ serve(async (req) => {
       }
     }
 
+    console.log('✅ Webhook processed successfully, returning 200 response')
     return new Response(JSON.stringify({ received: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
   } catch (error) {
-    console.error(`Error in webhook handler: ${error.message}`)
+    console.error(`⚠️ ERROR in webhook handler: ${error.message}`)
+    console.error(error.stack)
     return new Response(
       JSON.stringify({ error: error.message }),
       {
