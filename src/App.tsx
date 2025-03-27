@@ -49,7 +49,7 @@ function App() {
               <Route path="/profile/zoho" element={<ZohoIntegration />} />
               <Route path="/profile/zoho/admin" element={<ZohoAdmin />} />
               <Route path="/auth/zoho/callback" element={<ZohoCallback />} />
-              <Route path="/profile/applicant/:applicantId" element={<ApplicantProfile />} />
+              <Route path="/applicants/:id" element={<ApplicantProfile />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/404" element={<NotFound />} />
               <Route path="*" element={<Navigate to="/404" replace />} />

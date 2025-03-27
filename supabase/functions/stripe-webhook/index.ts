@@ -63,52 +63,17 @@ serve(async (req) => {
     )
     
     // Handle specific event types
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object
-      console.log(`Processing checkout session completed: ${session.id}`)
-      
-      // Extract the customer ID and client reference ID (user ID)
-      const customerId = session.customer
-      const userId = session.client_reference_id || session.metadata?.user_id
-      
-      if (userId) {
-        console.log(`Updating user profile: ${userId}`)
-        
-        // Get subscription details 
-        const subscription = await stripe.subscriptions.retrieve(session.subscription)
-        
-        // Update the user's profile immediately after successful checkout
-        const { data, error } = await supabaseClient
-          .from('profiles')
-          .update({
-            subscription_status: subscription.status,
-            subscription_id: session.subscription,
-            role: subscription.status === 'active' ? 'employer' : 'applicant'
-          })
-          .eq('id', userId)
-        
-        if (error) {
-          console.error('Error updating user profile after checkout:', error)
-          throw error
-        }
-        
-        console.log(`Updated profile for user ${userId}, status: ${subscription.status}, role: employer`)
-      } else {
-        console.warn(`No user ID found in checkout session ${session.id}`)
-      }
-    } 
-    else if (event.type.startsWith('customer.subscription.')) {
+    if (event.type.startsWith('customer.subscription.')) {
       const subscription = event.data.object
       
       // Get customer data to match with user
       const customer = await stripe.customers.retrieve(subscription.customer)
       
-      // Find matching user by either metadata.user_id or email
-      const userId = customer.metadata?.user_id
+      // Find matching user by email
       const email = customer.email
       
-      if (userId || email) {
-        console.log(`Processing subscription event for customer: ${userId || email}`)
+      if (email) {
+        console.log(`Processing subscription event for customer: ${email}`)
         
         // Set the subscription status based on the event type
         let subscriptionStatus
@@ -126,67 +91,23 @@ serve(async (req) => {
         }
         
         if (subscriptionStatus) {
-          // If we have a userId directly, use it
-          if (userId) {
-            // Update the user's profile with subscription information
-            const { data, error } = await supabaseClient
-              .from('profiles')
-              .update({
-                subscription_status: subscriptionStatus,
-                subscription_id: subscription.id,
-                role: subscriptionStatus === 'active' ? 'employer' : 'applicant'
-              })
-              .eq('id', userId)
-            
-            if (error) {
-              console.error('Error updating user profile by ID:', error)
-              throw error
-            }
-            
-            console.log(`Updated subscription status for user ID ${userId}: ${subscriptionStatus}`)
-          } 
-          // If we only have email, try to find the user by email
-          else if (email) {
-            // Get auth user by email
-            const { data: users, error: userError } = await supabaseClient.auth
-              .admin
-              .listUsers({
-                filter: {
-                  email: email
-                }
-              })
-            
-            if (userError) {
-              console.error('Error finding user by email:', userError)
-              throw userError
-            }
-            
-            if (users.users.length > 0) {
-              const foundUserId = users.users[0].id
-              
-              // Update the user's profile with subscription information
-              const { data, error } = await supabaseClient
-                .from('profiles')
-                .update({
-                  subscription_status: subscriptionStatus,
-                  subscription_id: subscription.id,
-                  role: subscriptionStatus === 'active' ? 'employer' : 'applicant'
-                })
-                .eq('id', foundUserId)
-              
-              if (error) {
-                console.error('Error updating user profile by email:', error)
-                throw error
-              }
-              
-              console.log(`Updated subscription status for user email ${email}: ${subscriptionStatus}`)
-            } else {
-              console.error(`No user found with email: ${email}`)
-            }
+          // Update the user's profile with subscription information
+          const { data, error } = await supabaseClient
+            .from('profiles')
+            .update({
+              subscription_status: subscriptionStatus,
+              subscription_id: subscription.id,
+              role: subscriptionStatus === 'active' ? 'employer' : 'applicant'
+            })
+            .eq('id', customer.metadata.user_id || '')
+          
+          if (error) {
+            console.error('Error updating user profile:', error)
+            throw error
           }
+          
+          console.log(`Updated subscription status for user: ${subscriptionStatus}`)
         }
-      } else {
-        console.error('No user ID or email found in customer data')
       }
     }
 

@@ -10,38 +10,39 @@ import { motion } from "framer-motion";
 const ADMIN_EMAIL = "admin@yourdomain.com"; // Replace with your email
 
 export function ProfileSidebar() {
-  const { user, userRole } = useAuth();
+  const { user } = useAuth();
   const [isLogoutHovered, setIsLogoutHovered] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [zohoConnected, setZohoConnected] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
     if (user) {
-      const fetchZohoStatus = async () => {
+      const fetchUserRole = async () => {
         try {
-          setLoading(true);
-          // Fetch zoho connection status
           const { data, error } = await supabase
             .from('profiles')
-            .select('zoho_connected')
+            .select('role, zoho_connected')
             .eq('id', user.id)
             .single();
           
           if (error) throw error;
-          
+          setUserRole(data?.role || 'applicant');
           setZohoConnected(data?.zoho_connected || false);
           
           // Check if this user is the admin
           setIsAdmin(user.email === ADMIN_EMAIL);
         } catch (error) {
-          console.error('Error fetching zoho status:', error);
+          console.error('Error fetching user role:', error);
         } finally {
           setLoading(false);
         }
       };
       
-      fetchZohoStatus();
+      fetchUserRole();
+    } else {
+      setLoading(false);
     }
   }, [user]);
   

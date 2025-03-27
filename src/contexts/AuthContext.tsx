@@ -7,64 +7,25 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   refreshUser: () => Promise<void>;
-  userRole: string | null;
 };
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   refreshUser: async () => {},
-  userRole: null,
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string | null>(null);
 
   const refreshUser = async () => {
     try {
-      console.log("AuthContext: Refreshing user");
       const { data: { session } } = await supabase.auth.getSession();
-      console.log("AuthContext: Session after refresh:", { hasSession: !!session, userId: session?.user?.id });
       setUser(session?.user ?? null);
-      
-      // Also refresh the profile information to ensure 
-      // role changes are reflected immediately
-      if (session?.user) {
-        console.log("AuthContext: Fetching profile for user:", session.user.id);
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('role, subscription_status')
-          .eq('id', session.user.id)
-          .single();
-          
-        if (error) {
-          console.error("Error fetching profile:", error);
-          return;
-        }
-          
-        if (data) {
-          const role = data.role || 'applicant';
-          console.log("AuthContext: User role from DB:", role);
-          // Store the user role in local storage for quick access
-          localStorage.setItem('userRole', role);
-          localStorage.setItem('subscriptionStatus', data.subscription_status || '');
-          setUserRole(role);
-        } else {
-          console.warn("AuthContext: No profile found for user", session.user.id);
-        }
-      } else {
-        // Clear role information when user is not logged in
-        console.log("AuthContext: No session, clearing role data");
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('subscriptionStatus');
-        setUserRole(null);
-      }
     } catch (error) {
       console.error("Error refreshing user:", error);
       setUser(null);
-      setUserRole(null);
     }
   };
 
@@ -73,47 +34,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const initializeAuth = async () => {
       try {
         console.log("AuthContext: Initializing auth");
-        
-        // First check if we have cached role info
-        const cachedRole = localStorage.getItem('userRole');
-        if (cachedRole) {
-          console.log("AuthContext: Found cached role:", cachedRole);
-          setUserRole(cachedRole);
-        }
-        
         const { data: { session } } = await supabase.auth.getSession();
         console.log("AuthContext: Session found", { hasSession: !!session, userId: session?.user?.id });
         setUser(session?.user ?? null);
-        
-        // Get profile information for role
-        if (session?.user) {
-          console.log("AuthContext: Fetching profile data for role");
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('role, subscription_status')
-            .eq('id', session.user.id)
-            .single();
-            
-          if (error) {
-            console.error("Error fetching profile:", error);
-            return;
-          }
-            
-          if (data) {
-            // Store the user role in local storage for quick access
-            const role = data.role || 'applicant';
-            localStorage.setItem('userRole', role);
-            localStorage.setItem('subscriptionStatus', data.subscription_status || '');
-            setUserRole(role);
-            console.log("AuthContext: User role set to", role);
-          } else {
-            console.warn("AuthContext: No profile found for user");
-          }
-        }
       } catch (error) {
         console.error("Error getting session:", error);
         setUser(null);
-        setUserRole(null);
       } finally {
         setLoading(false);
       }
@@ -122,49 +48,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     initializeAuth();
 
     // Listen for changes on auth state (login, sign out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       console.log("AuthContext: Auth state changed", { 
         event: _event, 
         hasSession: !!session, 
         userId: session?.user?.id 
       });
       setUser(session?.user ?? null);
-      
-      // Also update role information when auth state changes
-      if (session?.user) {
-        try {
-          console.log("AuthContext: Fetching updated role after auth state change");
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('role, subscription_status')
-            .eq('id', session.user.id)
-            .single();
-            
-          if (error) {
-            console.error("Error fetching profile:", error);
-            return;
-          }
-            
-          if (data) {
-            const role = data.role || 'applicant';
-            localStorage.setItem('userRole', role);
-            localStorage.setItem('subscriptionStatus', data.subscription_status || '');
-            setUserRole(role);
-            console.log("AuthContext: User role updated to", role);
-          } else {
-            console.warn("AuthContext: No profile found for user after auth change");
-          }
-        } catch (error) {
-          console.error("Error getting user role:", error);
-        }
-      } else {
-        // Clear role information when user logs out
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('subscriptionStatus');
-        setUserRole(null);
-        console.log("AuthContext: Cleared user role (logged out)");
-      }
-      
       setLoading(false);
     });
 
@@ -172,7 +62,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, refreshUser, userRole }}>
+    <AuthContext.Provider value={{ user, loading, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

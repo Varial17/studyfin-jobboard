@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,7 +14,7 @@ import { EducationSection } from "@/components/profile/EducationSection";
 import { ProfessionalInfoSection } from "@/components/profile/ProfessionalInfoSection";
 
 const Profile = () => {
-  const { user, userRole } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -47,23 +46,16 @@ const Profile = () => {
 
     const getProfile = async () => {
       try {
-        setLoading(true);
-        console.log("Fetching profile for user ID:", user.id);
-        
         const { data, error } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", user.id)
           .single();
 
-        if (error) {
-          console.error("Error fetching profile:", error);
-          throw error;
-        }
-        
+        if (error) throw error;
         if (data) {
-          console.log("Profile data retrieved:", data);
           setProfile({
+            ...profile,
             full_name: data.full_name || "",
             title: data.title || "",
             bio: data.bio || "",
@@ -81,7 +73,6 @@ const Profile = () => {
           });
         }
       } catch (error: any) {
-        console.error("Profile fetch error:", error);
         toast({
           variant: "destructive",
           title: t("error"),
@@ -103,12 +94,6 @@ const Profile = () => {
 
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
-
-      // Check if 'cvs' bucket exists, create if not
-      const { data: buckets } = await supabase.storage.listBuckets();
-      if (!buckets?.find(b => b.name === 'cvs')) {
-        await supabase.storage.createBucket('cvs', { public: true });
-      }
 
       const { error: uploadError, data } = await supabase.storage
         .from('cvs')
@@ -133,7 +118,6 @@ const Profile = () => {
         description: t("cvUploaded"),
       });
     } catch (error: any) {
-      console.error("CV upload error:", error);
       toast({
         variant: "destructive",
         title: t("error"),
@@ -149,8 +133,6 @@ const Profile = () => {
 
     setSaving(true);
     try {
-      console.log("Saving profile data:", profile);
-      
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -166,7 +148,6 @@ const Profile = () => {
         description: t("profileUpdated"),
       });
     } catch (error: any) {
-      console.error("Profile update error:", error);
       toast({
         variant: "destructive",
         title: t("error"),
@@ -178,21 +159,16 @@ const Profile = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
-        <Navbar />
-        <div className="flex items-center justify-center h-[calc(100vh-64px)]">
-          <span className="text-lg">{t("loading")}...</span>
-        </div>
-      </div>
-    );
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <span className="text-lg">{t("loading")}</span>
+    </div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
+    <div className="min-h-screen bg-gray-50">
       <Navbar />
       <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col md:flex-row gap-6">
+        <div className="flex gap-6">
           <ProfileSidebar />
           <div className="flex-1 max-w-4xl space-y-6">
             <BasicInfoSection profile={profile} setProfile={setProfile} />
