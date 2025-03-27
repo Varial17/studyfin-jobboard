@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { Link } from "react-router-dom";
 
 // Admin email that's allowed to access Zoho features
 const ADMIN_EMAIL = "admin@yourdomain.com"; // Replace with your email
@@ -60,14 +61,14 @@ export function ProfileSidebar() {
       ),
     },
     {
-      label: t("myJobs") || "My Jobs",
+      label: t("jobs") || "My Jobs",
       href: "/jobs",
       icon: (
         <Briefcase className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
       ),
     },
     {
-      label: t("applications") || "Applications",
+      label: t("applications") || "Applications", 
       href: "/applications",
       icon: (
         <ClipboardList className="h-5 w-5 flex-shrink-0 transition-colors text-neutral-400 group-hover/link:text-primary group-[.active]/link:text-primary dark:text-neutral-500 dark:group-hover/link:text-primary" />
