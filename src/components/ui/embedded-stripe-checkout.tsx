@@ -113,28 +113,44 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
   const [fallbackMode, setFallbackMode] = useState(false);
   const [fallbackLoading, setFallbackLoading] = useState(false);
 
+  // Debug state to track the flow
+  const [debugState, setDebugState] = useState<string>("initializing");
+
   useEffect(() => {
+    console.log(`Stripe checkout state: ${debugState}`);
+    
     const getPaymentIntent = async () => {
       try {
         setLoading(true);
         setError(null);
+        setDebugState("fetching payment intent");
 
+        console.log(`Fetching payment intent for user: ${userId}`);
         const data = await createPaymentIntent(userId);
+        console.log("Payment intent created:", data);
+        
+        if (!data || !data.clientSecret) {
+          throw new Error("Failed to create payment intent - no client secret returned");
+        }
+        
         setClientSecret(data.clientSecret);
+        setDebugState("payment intent received");
       } catch (err) {
         console.error("Error creating payment intent:", err);
         setError("We're experiencing issues with our payment system. Please try the alternative checkout method below.");
         setFallbackMode(true);
+        setDebugState("error-fallback");
       } finally {
         setLoading(false);
       }
     };
 
     getPaymentIntent();
-  }, [userId]);
+  }, [userId, debugState]);
 
   const handleFallbackCheckout = async () => {
     setFallbackLoading(true);
+    setDebugState("fallback-checkout-initiated");
     try {
       // Make a direct call to stripe-subscription edge function
       const { data, error } = await supabase.functions.invoke('stripe-subscription', {
@@ -154,6 +170,7 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
     } catch (err) {
       console.error('Error creating checkout session:', err);
       setError(`Checkout failed: ${err.message || 'Unknown error'}`);
+      setDebugState("fallback-checkout-failed");
     } finally {
       setFallbackLoading(false);
     }
@@ -222,6 +239,11 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
       },
     },
   };
+
+  console.log("Rendering Stripe Elements with options:", { 
+    clientSecretProvided: !!clientSecret,
+    stripeLoaded: !!stripePromise
+  });
 
   return (
     <Card className="p-6">
