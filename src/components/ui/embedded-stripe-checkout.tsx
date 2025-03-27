@@ -109,6 +109,8 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fallbackMode, setFallbackMode] = useState(false);
+  const [fallbackLoading, setFallbackLoading] = useState(false);
 
   useEffect(() => {
     const getPaymentIntent = async () => {
@@ -120,7 +122,8 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
         setClientSecret(data.clientSecret);
       } catch (err) {
         console.error("Error creating payment intent:", err);
-        setError(err.message || "Failed to initialize payment");
+        setError("We're experiencing issues with our payment system. Please try the alternative checkout method below.");
+        setFallbackMode(true);
       } finally {
         setLoading(false);
       }
@@ -128,6 +131,32 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
 
     getPaymentIntent();
   }, [userId]);
+
+  const handleFallbackCheckout = async () => {
+    setFallbackLoading(true);
+    try {
+      // Make a direct call to stripe-subscription edge function
+      const { data, error } = await window.supabase.functions.invoke('stripe-subscription', {
+        body: {
+          user_id: userId,
+          return_url: `${window.location.origin}/settings`
+        }
+      });
+      
+      if (error) throw new Error(error.message || 'Failed to start checkout');
+      
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (err) {
+      console.error('Error creating checkout session:', err);
+      setError(`Checkout failed: ${err.message || 'Unknown error'}`);
+    } finally {
+      setFallbackLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -138,12 +167,39 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
     );
   }
 
-  if (error) {
+  if (fallbackMode || error) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
+      <div className="space-y-4">
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        
+        <Card className="p-6">
+          <div className="flex flex-col space-y-4 items-center">
+            <h3 className="text-lg font-medium">Employer Subscription - $50/month</h3>
+            <p className="text-center text-sm text-muted-foreground">
+              Subscribe to access employer features, including unlimited job postings and applicant tracking
+            </p>
+            <Button 
+              className="w-full py-6 text-lg"
+              onClick={handleFallbackCheckout}
+              disabled={fallbackLoading}
+            >
+              {fallbackLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                  Processing...
+                </>
+              ) : (
+                "Subscribe Now"
+              )}
+            </Button>
+          </div>
+        </Card>
+      </div>
     );
   }
 
