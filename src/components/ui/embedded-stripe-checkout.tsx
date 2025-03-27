@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react"
@@ -19,13 +19,12 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
   const [success, setSuccess] = useState(false);
 
   // Check for success on page load (for redirect back from Stripe)
-  useEffect(() => {
+  useState(() => {
     const checkSuccess = () => {
       const url = new URL(window.location.href);
       const successParam = url.searchParams.get('success');
-      const sessionId = url.searchParams.get('session_id');
       
-      if (successParam === 'true' && sessionId) {
+      if (successParam === 'true') {
         setSuccess(true);
         onSuccess();
         // Remove query params from URL to prevent refresh issues
@@ -34,37 +33,31 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
     };
     
     checkSuccess();
-  }, [onSuccess]);
+  });
 
   const handleCheckout = async () => {
     try {
       setLoading(true);
       setError(null);
       
+      // Get the user's email from auth
+      const { data: { user } } = await supabase.auth.getUser();
+      const userEmail = user?.email;
+      
+      if (!userEmail) {
+        throw new Error("User email not found. Please ensure you're logged in.");
+      }
+      
       console.log("Creating Stripe checkout session for user:", userId);
       
-      const { data, error } = await supabase.functions.invoke('stripe-subscription', {
-        body: {
-          user_id: userId,
-          return_url: `${window.location.origin}/settings`
-        }
-      });
+      // Direct payment link for the subscription - replace with your actual payment link
+      const paymentLink = "https://buy.stripe.com/test_5kAdU3bCeblJcqQ3cc";
       
-      if (error) {
-        console.error("Stripe subscription error:", error);
-        throw new Error(error.message || "Failed to create checkout session");
-      }
-      
-      if (!data?.url) {
-        console.error("Invalid response from stripe-subscription:", data);
-        throw new Error("Invalid response - no checkout URL returned");
-      }
-      
-      console.log("Redirecting to Stripe checkout:", data.url);
-      window.location.href = data.url;
+      // Redirect directly to the payment link
+      window.location.href = paymentLink;
       
     } catch (err) {
-      console.error("Error creating checkout session:", err);
+      console.error("Error redirecting to checkout:", err);
       setError(err.message || "An unexpected error occurred. Please try again later.");
       setLoading(false);
     }

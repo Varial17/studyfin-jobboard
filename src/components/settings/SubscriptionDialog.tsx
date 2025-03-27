@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -19,6 +19,19 @@ export function SubscriptionDialog({ open, onOpenChange, onSuccess }: Subscripti
   const { error, checkoutLoading, handleCheckout, setError } = useSubscription();
   const [showEmbeddedCheckout, setShowEmbeddedCheckout] = useState(false);
   const [subscriptionSuccess, setSubscriptionSuccess] = useState(false);
+
+  // Check for success URL param on component mount
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const successParam = url.searchParams.get('success');
+    
+    if (successParam === 'true') {
+      setSubscriptionSuccess(true);
+      handleSubscriptionSuccess();
+      // Remove query params from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const handleSubscriptionSuccess = async () => {
     setSubscriptionSuccess(true);
