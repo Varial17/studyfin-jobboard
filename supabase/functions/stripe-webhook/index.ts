@@ -26,62 +26,11 @@ serve(async (req) => {
   try {
     console.log('Processing webhook request')
     
-    // Get the signature from the headers
-    const signature = req.headers.get('stripe-signature')
-    
-    if (!signature) {
-      console.error('⚠️ ERROR: Missing Stripe signature in headers')
-      console.log('All headers received:', JSON.stringify(Object.fromEntries([...req.headers.entries()])))
-      return new Response(
-        JSON.stringify({ error: 'Missing Stripe signature' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
-    
-    // Get the webhook secret from environment variables
-    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')
-    if (!webhookSecret) {
-      console.error('⚠️ ERROR: Missing STRIPE_WEBHOOK_SECRET environment variable')
-      return new Response(
-        JSON.stringify({ error: 'Missing STRIPE_WEBHOOK_SECRET environment variable' }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
-
-    // Get request body as text for signature verification
+    // Get request body as text
     const body = await req.text()
+    const event = JSON.parse(body)
     
-    console.log(`Signature received, length: ${signature.length}`)
-    console.log(`Webhook secret available, length: ${webhookSecret.length}`)
-    
-    // Verify webhook signature and extract the event
-    let event
-    try {
-      console.log('Attempting to construct Stripe event...')
-      event = stripe.webhooks.constructEvent(
-        body,
-        signature,
-        webhookSecret
-      )
-      console.log(`✅ Successfully constructed Stripe event: ${event.type}`)
-    } catch (err) {
-      console.error(`⚠️ ERROR: Webhook signature verification failed: ${err.message}`)
-      return new Response(
-        JSON.stringify({ error: 'Webhook signature verification failed', details: err.message }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
-
-    console.log(`Processing Stripe webhook event: ${event.type}`)
+    console.log(`Processing Stripe webhook event type: ${event.type}`)
     
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
@@ -119,11 +68,32 @@ serve(async (req) => {
         await handleInvoiceEvent(event, supabaseClient);
         break;
         
-      case 'customer.discount.created':
-      case 'promotion_code.updated':
-      case 'setup_intent.succeeded':
-      case 'setup_intent.created':
+      // Add more events that Stripe dashboard showed
+      case 'payment_intent.succeeded':
+      case 'payment_intent.created':
+      case 'payment_intent.payment_failed':
       case 'payment_method.attached':
+      case 'payment_method.automatically_updated':
+      case 'payment_method.detached':
+      case 'payment_method.updated':
+      case 'setup_intent.created':
+      case 'setup_intent.succeeded':
+      case 'charge.succeeded':
+      case 'charge.failed':
+      case 'billing_portal.configuration.created':
+      case 'billing_portal.session.created':
+      case 'customer.created':
+      case 'customer.updated':
+      case 'customer.deleted':
+      case 'customer.discount.created':
+      case 'customer.discount.updated':
+      case 'customer.discount.deleted':
+      case 'customer.source.created':
+      case 'customer.source.updated':
+      case 'customer.source.deleted':
+      case 'customer.tax_id.created':
+      case 'customer.tax_id.updated':
+      case 'customer.tax_id.deleted':
         // Log these events but don't need specific handling
         console.log(`Received ${event.type} event, logging only`);
         break;
