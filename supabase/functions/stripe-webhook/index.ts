@@ -100,7 +100,6 @@ serve(async (req) => {
               role: subscriptionStatus === 'active' ? 'employer' : 'applicant'
             })
             .eq('id', customer.metadata.user_id || '')
-            .is('id', 'not.null')
           
           if (error) {
             console.error('Error updating user profile:', error)
