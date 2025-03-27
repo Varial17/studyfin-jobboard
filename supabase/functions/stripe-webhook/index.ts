@@ -23,13 +23,27 @@ serve(async (req) => {
     const signature = req.headers.get('stripe-signature')
     
     if (!signature) {
-      throw new Error('Missing Stripe signature')
+      console.error('Missing Stripe signature')
+      return new Response(
+        JSON.stringify({ error: 'Missing Stripe signature', code: 401 }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
     }
     
     // Get the webhook secret from environment variables
     const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')
     if (!webhookSecret) {
-      throw new Error('Missing STRIPE_WEBHOOK_SECRET environment variable')
+      console.error('Missing STRIPE_WEBHOOK_SECRET environment variable')
+      return new Response(
+        JSON.stringify({ error: 'Missing STRIPE_WEBHOOK_SECRET environment variable' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
     }
 
     // Get request body as text for signature verification
@@ -46,7 +60,7 @@ serve(async (req) => {
     } catch (err) {
       console.error(`Webhook signature verification failed: ${err.message}`)
       return new Response(
-        JSON.stringify({ error: 'Webhook signature verification failed' }),
+        JSON.stringify({ error: 'Webhook signature verification failed', details: err.message }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -63,76 +77,108 @@ serve(async (req) => {
     )
     
     // Handle specific event types
-    if (event.type.startsWith('customer.subscription.')) {
+    if (event.type === 'customer.subscription.created' || 
+        event.type === 'customer.subscription.updated') {
       const subscription = event.data.object
       
       // Get customer data to match with user
       const customer = await stripe.customers.retrieve(subscription.customer)
+      console.log(`Processing subscription event for customer: ${customer.email}`)
       
-      // Find matching user by email
-      const email = customer.email
+      // Set the subscription status and ID
+      const subscriptionStatus = subscription.status
+      const subscriptionId = subscription.id
       
-      if (email) {
-        console.log(`Processing subscription event for customer: ${email}`)
+      // Save customer metadata for debugging
+      console.log(`Customer metadata:`, customer.metadata)
+      
+      // Determine which user ID to use - from metadata or lookup by email
+      let userId = customer.metadata?.user_id
+      
+      if (!userId && customer.email) {
+        // If no user_id in metadata, try to find the user by email
+        const { data: userData, error: userError } = await supabaseClient
+          .from('profiles')
+          .select('id')
+          .eq('id', customer.email.split('@')[0])
+          .single()
         
-        // Set the subscription status based on the event type
-        let subscriptionStatus
-        
-        switch (event.type) {
-          case 'customer.subscription.created':
-          case 'customer.subscription.updated':
-            subscriptionStatus = subscription.status
-            break
-          case 'customer.subscription.deleted':
-            subscriptionStatus = 'canceled'
-            break
-          default:
-            subscriptionStatus = null
-        }
-        
-        if (subscriptionStatus) {
-          // Update the user's profile with subscription information and set role to employer
-          // Always set role to employer if subscription is active
-          const { data, error } = await supabaseClient
-            .from('profiles')
-            .update({
-              subscription_status: subscriptionStatus,
-              subscription_id: subscription.id,
-              role: subscriptionStatus === 'active' ? 'employer' : 'applicant'
-            })
-            .eq('id', customer.metadata.user_id || '')
-          
-          if (error) {
-            console.error('Error updating user profile:', error)
-            throw error
-          }
-          
-          console.log(`Updated subscription status for user: ${subscriptionStatus}`)
-          console.log(`Updated user role to: ${subscriptionStatus === 'active' ? 'employer' : 'applicant'}`)
+        if (userError) {
+          console.error('Error finding user by email:', userError)
+        } else if (userData) {
+          userId = userData.id
+          console.log(`Found user by email: ${userId}`)
         }
       }
-    } else if (event.type === 'checkout.session.completed') {
-      // Handle one-time checkout completion events
-      const session = event.data.object
       
-      if (session.customer && session.client_reference_id) {
-        console.log(`Processing checkout completion for user ID: ${session.client_reference_id}`)
+      if (userId) {
+        console.log(`Updating subscription for user: ${userId}, status: ${subscriptionStatus}`)
         
-        // Update the user's profile to employer role
+        // Update the user's profile with subscription information
         const { data, error } = await supabaseClient
           .from('profiles')
           .update({
-            role: 'employer',
-            subscription_status: 'active'
+            subscription_status: subscriptionStatus,
+            subscription_id: subscriptionId,
+            role: subscriptionStatus === 'active' ? 'employer' : 'applicant'
           })
-          .eq('id', session.client_reference_id)
+          .eq('id', userId)
         
         if (error) {
-          console.error('Error updating user profile after checkout:', error)
+          console.error('Error updating user profile:', error)
           throw error
         }
         
-        console.log(`Updated user role to employer after successful checkout`)
+        console.log(`Successfully updated subscription status for user ${userId} to ${subscriptionStatus}`)
+        console.log(`Updated user role to: ${subscriptionStatus === 'active' ? 'employer' : 'applicant'}`)
+      } else {
+        console.error('Unable to find user ID for customer:', customer.id)
+      }
+    } else if (event.type === 'checkout.session.completed') {
+      // Handle checkout completion events
+      const session = event.data.object
+      
+      // Check if it's a subscription checkout
+      if (session.mode === 'subscription') {
+        console.log('Processing subscription checkout completion:', session.id)
+        
+        // Get the customer ID and client reference ID
+        const customerId = session.customer
+        const clientReferenceId = session.client_reference_id
+        
+        if (customerId && clientReferenceId) {
+          console.log(`Processing checkout completion for user ID: ${clientReferenceId}`)
+          
+          // Retrieve the customer to get their email
+          const customer = await stripe.customers.retrieve(customerId)
+          
+          // Update the user's profile to employer role
+          const { data, error } = await supabaseClient
+            .from('profiles')
+            .update({
+              role: 'employer',
+              subscription_status: 'active',
+              subscription_id: session.subscription
+            })
+            .eq('id', clientReferenceId)
+          
+          if (error) {
+            console.error('Error updating user profile after checkout:', error)
+            throw error
+          }
+          
+          console.log(`Updated user ${clientReferenceId} role to employer after successful checkout`)
+          
+          // Also store the customer ID with user ID metadata if not already set
+          if (customer && !customer.metadata.user_id) {
+            await stripe.customers.update(customerId, {
+              metadata: { user_id: clientReferenceId }
+            })
+            console.log(`Updated Stripe customer ${customerId} with user_id metadata`)
+          }
+        } else {
+          console.error('Missing customer ID or client reference ID in checkout session')
+        }
       }
     }
 
@@ -145,7 +191,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ error: error.message }),
       {
-        status: 400,
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     )

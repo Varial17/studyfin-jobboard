@@ -1,3 +1,4 @@
+
 // Follow us: https://twitter.com/supabase
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
@@ -90,6 +91,7 @@ serve(async (req) => {
           await stripe.customers.update(customerId, {
             metadata: { user_id: user_id }
           });
+          console.log(`Updated existing customer ${customerId} with user_id ${user_id} metadata`);
         }
       } else {
         // Create new customer with user_id in metadata
@@ -98,10 +100,11 @@ serve(async (req) => {
           metadata: { user_id: user_id }
         });
         customerId = customer.id;
+        console.log(`Created new customer ${customerId} with user_id ${user_id} metadata`);
       }
 
       // Create checkout session options
-      const sessionOptions = {
+      const sessionOptions: any = {
         customer: customerId,
         line_items: [
           {
