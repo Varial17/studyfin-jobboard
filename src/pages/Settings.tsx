@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -159,6 +158,45 @@ const Settings = () => {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSubscription = async (couponCode?: string) => {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error('You must be logged in to subscribe');
+      }
+
+      const { error, data } = await supabase.functions.invoke('stripe-subscription', {
+        body: {
+          user_id: session.user.id,
+          user_email: session.user.email,
+          return_url: `${window.location.origin}/settings`,
+          coupon_id: couponCode || undefined
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (error) {
+      console.error('Error starting subscription:', error);
+      toast({
+        title: 'Subscription Failed',
+        description: error.message || 'Could not start subscription. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
