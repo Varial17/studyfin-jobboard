@@ -44,6 +44,15 @@ function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
   const handleAction = (tier: PricingTier) => {
     if (onAction && tier.buttonAction) {
       onAction(tier.buttonAction, tier, couponCode);
+      
+      // If this is a checkout action, redirect to profile after the operation
+      if (tier.buttonAction === "checkout") {
+        // The actual redirect will happen in Settings.tsx after the checkout process completes
+        // This is just a fallback in case the redirect from Stripe doesn't work
+        setTimeout(() => {
+          navigate("/profile");
+        }, 1000);
+      }
     }
   }
 
