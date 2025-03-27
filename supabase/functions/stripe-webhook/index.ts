@@ -77,13 +77,12 @@ serve(async (req) => {
     )
     
     // Handle specific event types
-    if (event.type === 'customer.subscription.created' || 
-        event.type === 'customer.subscription.updated') {
+    if (event.type === 'customer.subscription.created') {
       const subscription = event.data.object
       
       // Get customer data to match with user
       const customer = await stripe.customers.retrieve(subscription.customer)
-      console.log(`Processing subscription event for customer: ${customer.email}`)
+      console.log(`Processing subscription created event for customer: ${customer.email}`)
       
       // Set the subscription status and ID
       const subscriptionStatus = subscription.status
@@ -91,6 +90,60 @@ serve(async (req) => {
       
       // Save customer metadata for debugging
       console.log(`Customer metadata:`, customer.metadata)
+      
+      // Determine which user ID to use - from metadata or lookup by email
+      let userId = customer.metadata?.user_id
+      
+      if (!userId && customer.email) {
+        // If no user_id in metadata, try to find the user by email
+        const { data: userData, error: userError } = await supabaseClient
+          .from('profiles')
+          .select('id')
+          .eq('id', customer.email.split('@')[0])
+          .single()
+        
+        if (userError) {
+          console.error('Error finding user by email:', userError)
+        } else if (userData) {
+          userId = userData.id
+          console.log(`Found user by email: ${userId}`)
+        }
+      }
+      
+      if (userId) {
+        console.log(`Updating subscription for user: ${userId}, status: ${subscriptionStatus}`)
+        
+        // Update the user's profile with subscription information and change role to employer
+        const { data, error } = await supabaseClient
+          .from('profiles')
+          .update({
+            subscription_status: subscriptionStatus,
+            subscription_id: subscriptionId,
+            role: subscriptionStatus === 'active' ? 'employer' : 'applicant'
+          })
+          .eq('id', userId)
+        
+        if (error) {
+          console.error('Error updating user profile:', error)
+          throw error
+        }
+        
+        console.log(`Successfully updated subscription status for user ${userId} to ${subscriptionStatus}`)
+        console.log(`Updated user role to: ${subscriptionStatus === 'active' ? 'employer' : 'applicant'}`)
+      } else {
+        console.error('Unable to find user ID for customer:', customer.id)
+      }
+    } 
+    else if (event.type === 'customer.subscription.updated') {
+      const subscription = event.data.object
+      
+      // Get customer data to match with user
+      const customer = await stripe.customers.retrieve(subscription.customer)
+      console.log(`Processing subscription updated event for customer: ${customer.email}`)
+      
+      // Set the subscription status and ID
+      const subscriptionStatus = subscription.status
+      const subscriptionId = subscription.id
       
       // Determine which user ID to use - from metadata or lookup by email
       let userId = customer.metadata?.user_id
@@ -134,7 +187,8 @@ serve(async (req) => {
       } else {
         console.error('Unable to find user ID for customer:', customer.id)
       }
-    } else if (event.type === 'checkout.session.completed') {
+    } 
+    else if (event.type === 'checkout.session.completed') {
       // Handle checkout completion events
       const session = event.data.object
       
