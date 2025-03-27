@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -366,7 +367,7 @@ const Settings = () => {
           <div className="py-4">
             <div className="rounded-lg border p-4">
               <div className="font-medium">Employer Subscription</div>
-              <div className="text-2xl font-bold mt-2">$29/month</div>
+              <div className="text-2xl font-bold mt-2">$50/month</div>
               <ul className="mt-4 space-y-2">
                 <li className="flex items-center">
                   <span className="mr-2">✓</span> Post unlimited job listings

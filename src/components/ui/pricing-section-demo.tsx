@@ -46,8 +46,8 @@ const defaultTiers = [
   {
     name: "Employer",
     price: {
-      monthly: 29,
-      yearly: 290,
+      monthly: 50,
+      yearly: 500,
     },
     description: "Everything you need as an employer",
     highlight: true,
