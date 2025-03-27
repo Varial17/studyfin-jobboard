@@ -31,9 +31,9 @@ const Settings = () => {
   const [stripeRedirectHandled, setStripeRedirectHandled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState("");
 
   useEffect(() => {
-    // Store user email in sessionStorage for use in checkout process
     if (user && user.email) {
       sessionStorage.setItem('userEmail', user.email);
     }

@@ -42,7 +42,7 @@ function PricingSection({ tiers, className, onAction }: PricingSectionProps) {
   const [couponCode, setCouponCode] = useState("")
 
   const handleAction = (tier: PricingTier) => {
-    if (tier.buttonAction === "checkout") {
+    if (tier.buttonAction && tier.buttonAction === "checkout") {
       // Direct Stripe checkout using the specified price ID
       const priceId = "price_1R74AOA1u9Lm91Tyrg2C0ooM";
       let checkoutUrl = `https://checkout.stripe.com/c/pay/${priceId}?prefilled_email=${encodeURIComponent(sessionStorage.getItem('userEmail') || '')}`;
