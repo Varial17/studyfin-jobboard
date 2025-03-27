@@ -1,6 +1,4 @@
 
-// Follow us: https://twitter.com/supabase
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { corsHeaders } from "../_shared/cors.ts"
 import Stripe from 'https://esm.sh/stripe@12.0.0?target=deno'
@@ -12,6 +10,8 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
   httpClient: Stripe.createFetchHttpClient(),
 });
+
+const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
 
 serve(async (req) => {
   console.log(`Webhook request received: ${req.method} ${req.url}`)
@@ -28,7 +28,35 @@ serve(async (req) => {
     
     // Get request body as text
     const body = await req.text()
-    const event = JSON.parse(body)
+    
+    // Verify webhook signature if secret is available
+    let event;
+    if (webhookSecret) {
+      const signature = req.headers.get('stripe-signature');
+      console.log(`Stripe signature received: ${signature ? 'Yes' : 'No'}`)
+      
+      try {
+        if (signature) {
+          event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+          console.log(`Verified Stripe webhook event signature: ${event.type}`);
+        } else {
+          console.log('No Stripe signature found, proceeding without verification');
+          event = JSON.parse(body);
+        }
+      } catch (err) {
+        console.error(`⚠️ Webhook signature verification failed:`, err);
+        return new Response(
+          JSON.stringify({ error: `Webhook signature verification failed: ${err.message}` }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+    } else {
+      console.log('No webhook secret configured, proceeding without verification');
+      event = JSON.parse(body);
+    }
     
     console.log(`Processing Stripe webhook event type: ${event.type}`)
     
