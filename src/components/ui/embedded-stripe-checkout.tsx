@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -17,8 +16,6 @@ import { StripeElementsOptions } from "@stripe/stripe-js"
 import { createPaymentIntent } from "@/services/payment"
 import { supabase } from "@/integrations/supabase/client"
 
-// Initialize Stripe with your publishable key
-// This key is safe to be in the client code
 const stripePromise = loadStripe("pk_live_51QyNBYA1u9Lm91TyZDDQqYKQJ0zLHyxnY6JW2Qeez8TAGMnyoQQJFGxgUTkEq5dhCqDFBIbmXncvv4EkQVCW7xo200PfBTQ9Wz");
 
 const CheckoutForm = ({ onSuccess }: { onSuccess: () => void }) => {
@@ -130,14 +127,27 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
   const [fallbackLoading, setFallbackLoading] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [debugState, setDebugState] = useState<string>("initializing");
+  const [lastAttemptTime, setLastAttemptTime] = useState(0);
 
   useEffect(() => {
     console.log(`Stripe checkout state: ${debugState}`);
     
+    const now = Date.now();
+    const timeSinceLastAttempt = now - lastAttemptTime;
+    const minInterval = 1000 * (retryCount + 1); // Increase interval with each retry
+    
     const getPaymentIntent = async () => {
+      if (retryCount > 0 && timeSinceLastAttempt < minInterval) {
+        const waitTime = minInterval - timeSinceLastAttempt;
+        console.log(`Waiting ${waitTime}ms before retry ${retryCount + 1}...`);
+        setTimeout(() => setRetryCount(retryCount), waitTime); // Trigger effect again after wait
+        return;
+      }
+      
       try {
         setLoading(true);
         setError(null);
+        setLastAttemptTime(Date.now());
         setDebugState(`fetching payment intent (attempt ${retryCount + 1})`);
 
         console.log(`Fetching payment intent for user: ${userId}`);
@@ -153,8 +163,14 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
       } catch (err) {
         console.error("Error creating payment intent:", err);
         
-        // If we've tried less than 3 times, retry
-        if (retryCount < 2) {
+        const isRateLimitError = err.message && (
+          err.message.includes("timeout") || 
+          err.message.includes("rate limit") || 
+          err.message.includes("429") ||
+          err.message.includes("lock_timeout")
+        );
+        
+        if (isRateLimitError && retryCount < 5) {
           console.log(`Retrying payment intent creation (attempt ${retryCount + 2})`);
           setRetryCount(retryCount + 1);
           return; // This will trigger the useEffect again since retryCount changes
@@ -169,13 +185,12 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
     };
 
     getPaymentIntent();
-  }, [userId, retryCount, debugState]);
+  }, [userId, retryCount, debugState, lastAttemptTime]);
 
   const handleFallbackCheckout = async () => {
     setFallbackLoading(true);
     setDebugState("fallback-checkout-initiated");
     try {
-      // Make a direct call to stripe-subscription edge function
       const { data, error } = await supabase.functions.invoke('stripe-subscription', {
         body: {
           user_id: userId,

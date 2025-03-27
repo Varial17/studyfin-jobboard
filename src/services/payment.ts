@@ -8,8 +8,15 @@ export async function createPaymentIntent(userId: string) {
     }
     
     console.log(`Creating payment intent for user ${userId}`);
+    
+    // Generate a unique idempotency key for this request
+    const idempotencyKey = crypto.randomUUID();
+    
     const { data, error } = await supabase.functions.invoke('create-payment-intent', {
-      body: { user_id: userId }
+      body: { 
+        user_id: userId,
+        idempotency_key: idempotencyKey
+      }
     });
     
     if (error) {
