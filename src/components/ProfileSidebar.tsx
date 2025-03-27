@@ -10,65 +10,38 @@ import { motion } from "framer-motion";
 const ADMIN_EMAIL = "admin@yourdomain.com"; // Replace with your email
 
 export function ProfileSidebar() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const [isLogoutHovered, setIsLogoutHovered] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [zohoConnected, setZohoConnected] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
     if (user) {
-      const fetchUserRole = async () => {
+      const fetchZohoStatus = async () => {
         try {
-          // First check local storage for cached role
-          const cachedRole = localStorage.getItem('userRole');
+          setLoading(true);
+          // Fetch zoho connection status
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('zoho_connected')
+            .eq('id', user.id)
+            .single();
           
-          if (cachedRole) {
-            setUserRole(cachedRole);
-            
-            // Still fetch from database to ensure data is up-to-date
-            const { data, error } = await supabase
-              .from('profiles')
-              .select('role, zoho_connected')
-              .eq('id', user.id)
-              .single();
-            
-            if (error) throw error;
-            
-            // Update local state and cache if different
-            if (data?.role !== cachedRole) {
-              setUserRole(data?.role || 'applicant');
-              localStorage.setItem('userRole', data?.role || 'applicant');
-            }
-            
-            setZohoConnected(data?.zoho_connected || false);
-          } else {
-            // No cached role, fetch from database
-            const { data, error } = await supabase
-              .from('profiles')
-              .select('role, zoho_connected')
-              .eq('id', user.id)
-              .single();
-            
-            if (error) throw error;
-            setUserRole(data?.role || 'applicant');
-            localStorage.setItem('userRole', data?.role || 'applicant');
-            setZohoConnected(data?.zoho_connected || false);
-          }
+          if (error) throw error;
+          
+          setZohoConnected(data?.zoho_connected || false);
           
           // Check if this user is the admin
           setIsAdmin(user.email === ADMIN_EMAIL);
         } catch (error) {
-          console.error('Error fetching user role:', error);
+          console.error('Error fetching zoho status:', error);
         } finally {
           setLoading(false);
         }
       };
       
-      fetchUserRole();
-    } else {
-      setLoading(false);
+      fetchZohoStatus();
     }
   }, [user]);
   

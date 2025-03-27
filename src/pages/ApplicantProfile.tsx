@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,6 +45,7 @@ const ApplicantProfile = () => {
 
     const fetchApplicantProfile = async () => {
       try {
+        setLoading(true);
         const { data, error } = await supabase
           .from("profiles")
           .select("*")
@@ -68,10 +70,11 @@ const ApplicantProfile = () => {
             cv_url: data.cv_url || "",
             github_url: data.github_url || "",
             linkedin_url: data.linkedin_url || "",
-            role: (data as any).role || "applicant",
+            role: data.role || "applicant",
           });
         }
       } catch (error: any) {
+        console.error("Error fetching applicant profile:", error);
         toast({
           variant: "destructive",
           title: t("error"),
