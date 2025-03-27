@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react"
@@ -11,35 +11,55 @@ import {
   Elements,
   PaymentElement,
   useStripe,
-  useElements,
-  CheckoutProvider,
-  useCheckout
+  useElements
 } from "@stripe/react-stripe-js"
+import { supabase } from "@/integrations/supabase/client"
 
-// Initialize Stripe with the beta flag for custom checkout
-const stripePromise = loadStripe("pk_live_51QyNBYA1u9Lm91TyZDDQqYKQJ0zLHyxnY6JW2Qeez8TAGMnyoQQJFGxgUTkEq5dhCqDFBIbmXncvv4EkQVCW7xo200PfBTQ9Wz", {
-  betas: ['custom_checkout_beta_6']
-});
+// Initialize Stripe - using your publishable key
+const stripePromise = loadStripe("pk_live_51QyNBYA1u9Lm91TyZDDQqYKQJ0zLHyxnY6JW2Qeez8TAGMnyoQQJFGxgUTkEq5dhCqDFBIbmXncvv4EkQVCW7xo200PfBTQ9Wz");
 
+// CheckoutForm component that handles the payment submission
 const CheckoutForm = ({ onSuccess }: { onSuccess: () => void }) => {
-  const { confirm } = useCheckout();
+  const stripe = useStripe();
+  const elements = useElements();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    
+    if (!stripe || !elements) {
+      return;
+    }
+
     setProcessing(true);
     setErrorMessage(null);
 
     console.log("Processing payment...");
     
     try {
-      const result = await confirm();
+      const { error: submitError } = await elements.submit();
       
-      if (result.type === 'error') {
-        console.error("Payment error:", result.error);
-        setErrorMessage(result.error.message);
+      if (submitError) {
+        console.error("Elements submission error:", submitError);
+        setErrorMessage(submitError.message);
+        setProcessing(false);
+        return;
+      }
+      
+      // Confirm the payment
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/settings?success=true`,
+        },
+        redirect: 'if_required'
+      });
+
+      if (error) {
+        console.error("Payment error:", error);
+        setErrorMessage(error.message || "An unexpected error occurred");
       } else {
         console.log("Payment succeeded!");
         setSucceeded(true);
@@ -77,7 +97,7 @@ const CheckoutForm = ({ onSuccess }: { onSuccess: () => void }) => {
       
       <Button 
         type="submit" 
-        disabled={processing} 
+        disabled={processing || !stripe || !elements} 
         className="w-full"
       >
         {processing ? (
@@ -93,23 +113,10 @@ const CheckoutForm = ({ onSuccess }: { onSuccess: () => void }) => {
   );
 };
 
+// Email input component
 const EmailInput = () => {
-  const checkout = useCheckout();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
-
-  const handleBlur = async () => {
-    try {
-      const result = await checkout.updateEmail(email);
-      if (result.error) {
-        setError(result.error.message);
-      } else {
-        setError(null);
-      }
-    } catch (err) {
-      setError("Failed to validate email. Please try again.");
-    }
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
@@ -124,7 +131,6 @@ const EmailInput = () => {
         type="email"
         value={email}
         onChange={handleChange}
-        onBlur={handleBlur}
         className="w-full px-3 py-2 border rounded-md"
         placeholder="your.email@example.com"
       />
@@ -143,6 +149,7 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
   const [error, setError] = useState<string | null>(null);
   const [fallbackMode, setFallbackMode] = useState(false);
   const [fallbackLoading, setFallbackLoading] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   // Function to fetch client secret from our backend
   const fetchClientSecret = async () => {
@@ -158,19 +165,24 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
         throw new Error(error.message || 'Failed to create payment intent');
       }
       
-      if (!data || !data.checkoutSessionClientSecret) {
+      if (!data || !data.clientSecret) {
         throw new Error('Invalid response - no client secret returned');
       }
       
       console.log("Payment intent created successfully");
-      return data.checkoutSessionClientSecret;
+      setClientSecret(data.clientSecret);
     } catch (error) {
       console.error("Error creating checkout session:", error);
-      throw error;
+      setError(error.message || "Failed to initialize payment");
+      setFallbackMode(true);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchClientSecret();
+  }, [userId]);
 
   const handleFallbackCheckout = async () => {
     setFallbackLoading(true);
@@ -200,6 +212,7 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
   const handleRetry = () => {
     setError(null);
     setFallbackMode(false);
+    fetchClientSecret();
   };
 
   if (loading) {
@@ -260,27 +273,23 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
     );
   }
 
+  if (!clientSecret) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>Failed to initialize payment. Please try again later.</AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <Card className="p-6">
-      <CheckoutProvider
-        stripe={stripePromise}
-        options={{
-          fetchClientSecret,
-          elementsOptions: {
-            appearance: {
-              theme: 'stripe',
-              variables: {
-                colorPrimary: '#0284c7',
-              },
-            },
-          }
-        }}
-      >
+      <Elements stripe={stripePromise} options={{ clientSecret }}>
         <div className="space-y-4">
           <EmailInput />
           <CheckoutForm onSuccess={onSuccess} />
         </div>
-      </CheckoutProvider>
+      </Elements>
     </Card>
   );
 }
