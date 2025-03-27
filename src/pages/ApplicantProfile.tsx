@@ -12,6 +12,7 @@ import { EducationSection } from "@/components/profile/EducationSection";
 import { ProfessionalInfoSection } from "@/components/profile/ProfessionalInfoSection";
 import { Navbar } from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
+import { AlertCircle } from "lucide-react";
 
 const ApplicantProfile = () => {
   const { applicantId } = useParams();
@@ -21,6 +22,7 @@ const ApplicantProfile = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fetchAttempts, setFetchAttempts] = useState(0);
   const [profile, setProfile] = useState({
     full_name: "",
     title: "",
@@ -42,7 +44,7 @@ const ApplicantProfile = () => {
     // Log when the component mounts for debugging
     console.log("ApplicantProfile component mounted");
     console.log("Current user:", user);
-    console.log("Applicant ID:", applicantId);
+    console.log("Applicant ID from params:", applicantId);
     
     if (!user) {
       console.log("No user found, redirecting to auth");
@@ -53,7 +55,7 @@ const ApplicantProfile = () => {
     const fetchApplicantProfile = async () => {
       try {
         setLoading(true);
-        console.log("Fetching applicant profile for ID:", applicantId);
+        console.log(`Fetch attempt ${fetchAttempts + 1} for applicant profile ID:`, applicantId);
         
         if (!applicantId) {
           console.error("Missing applicant ID");
@@ -61,16 +63,27 @@ const ApplicantProfile = () => {
           throw new Error("Applicant ID is missing");
         }
         
-        const { data, error } = await supabase
+        // Add a small delay to ensure Supabase is ready
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        console.log("Making Supabase query for profile:", applicantId);
+        const { data, error: fetchError, status } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", applicantId)
           .single();
 
-        if (error) {
-          console.error("Error fetching applicant profile:", error);
-          setError(`Error fetching profile: ${error.message}`);
-          throw error;
+        console.log("Supabase response status:", status);
+        
+        if (fetchError) {
+          console.error("Error fetching applicant profile:", fetchError);
+          if (status === 406) {
+            console.log("No matching profile found for ID:", applicantId);
+            setError("Profile not found. The requested applicant profile does not exist.");
+          } else {
+            setError(`Error fetching profile: ${fetchError.message}`);
+          }
+          throw fetchError;
         }
         
         if (data) {
@@ -92,17 +105,29 @@ const ApplicantProfile = () => {
             role: data.role || "applicant",
           });
         } else {
-          console.error("No profile data found");
-          setError("Profile not found");
+          console.error("No profile data found in response");
+          setError("Profile not found. Please check the applicant ID.");
         }
       } catch (error: any) {
         console.error("Applicant profile fetch error:", error);
         setError(error.message || "Error fetching profile");
-        toast({
-          variant: "destructive",
-          title: t("error"),
-          description: error.message,
-        });
+        
+        // Only show toast on first error
+        if (fetchAttempts === 0) {
+          toast({
+            variant: "destructive",
+            title: t("error"),
+            description: error.message || "Failed to load profile",
+          });
+        }
+        
+        // If we've tried a few times and still failing, give up
+        if (fetchAttempts >= 2) {
+          console.log("Multiple fetch attempts failed, stopping retries");
+        } else {
+          // Increment the fetch attempts counter
+          setFetchAttempts(prev => prev + 1);
+        }
       } finally {
         setLoading(false);
         console.log("Finished loading applicant profile");
@@ -110,12 +135,17 @@ const ApplicantProfile = () => {
     };
 
     fetchApplicantProfile();
-  }, [user, applicantId, navigate, t, toast]);
+  }, [user, applicantId, navigate, t, toast, fetchAttempts]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-neutral-900 flex items-center justify-center">
-        <span className="text-lg">{t("loading")}...</span>
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-lg">{t("loading")}...</span>
+          <p className="text-sm text-muted-foreground">
+            Fetching profile for user ID: {applicantId}
+          </p>
+        </div>
       </div>
     );
   }
@@ -123,13 +153,25 @@ const ApplicantProfile = () => {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-neutral-900 flex items-center justify-center flex-col gap-4">
-        <span className="text-lg text-red-500">{error}</span>
-        <button 
-          onClick={() => navigate(-1)}
-          className="px-4 py-2 bg-primary text-white rounded-md"
-        >
-          {t("back")}
-        </button>
+        <div className="flex items-center gap-2 text-red-500">
+          <AlertCircle className="h-5 w-5" />
+          <span className="text-lg font-medium">{t("error")}</span>
+        </div>
+        <p className="text-center max-w-md mb-4">{error}</p>
+        <div className="flex gap-4">
+          <button 
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 bg-primary text-white rounded-md"
+          >
+            {t("back")}
+          </button>
+          <button 
+            onClick={() => setFetchAttempts(prev => prev + 1)}
+            className="px-4 py-2 bg-secondary text-white rounded-md"
+          >
+            {t("retry")}
+          </button>
+        </div>
       </div>
     );
   }
