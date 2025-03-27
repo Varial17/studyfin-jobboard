@@ -21,15 +21,41 @@ export function ProfileSidebar() {
     if (user) {
       const fetchUserRole = async () => {
         try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('role, zoho_connected')
-            .eq('id', user.id)
-            .single();
+          // First check local storage for cached role
+          const cachedRole = localStorage.getItem('userRole');
           
-          if (error) throw error;
-          setUserRole(data?.role || 'applicant');
-          setZohoConnected(data?.zoho_connected || false);
+          if (cachedRole) {
+            setUserRole(cachedRole);
+            
+            // Still fetch from database to ensure data is up-to-date
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('role, zoho_connected')
+              .eq('id', user.id)
+              .single();
+            
+            if (error) throw error;
+            
+            // Update local state and cache if different
+            if (data?.role !== cachedRole) {
+              setUserRole(data?.role || 'applicant');
+              localStorage.setItem('userRole', data?.role || 'applicant');
+            }
+            
+            setZohoConnected(data?.zoho_connected || false);
+          } else {
+            // No cached role, fetch from database
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('role, zoho_connected')
+              .eq('id', user.id)
+              .single();
+            
+            if (error) throw error;
+            setUserRole(data?.role || 'applicant');
+            localStorage.setItem('userRole', data?.role || 'applicant');
+            setZohoConnected(data?.zoho_connected || false);
+          }
           
           // Check if this user is the admin
           setIsAdmin(user.email === ADMIN_EMAIL);

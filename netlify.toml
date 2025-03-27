@@ -12,3 +12,14 @@
 [build]
   publish = "dist"
   command = "npm run build"
+
+# Set environment variables for production
+[build.environment]
+  NODE_VERSION = "18"
+
+# Handle trailing slashes consistently
+[[redirects]]
+  from = "/*/"
+  to = "/:splat"
+  status = 301
+  force = true
