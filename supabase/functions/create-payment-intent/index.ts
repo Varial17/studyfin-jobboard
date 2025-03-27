@@ -35,12 +35,26 @@ serve(async (req) => {
     // Get user profile from profiles table
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id')
+      .select('id, avatar_url, full_name')
       .eq('id', user_id)
       .single()
       
     if (profileError || !profile) {
       throw new Error(`User profile not found: ${profileError?.message || 'Unknown error'}`)
+    }
+    
+    // Get user email from auth.users
+    const { data: userData, error: userError } = await supabase
+      .auth.admin.getUserById(user_id)
+      
+    if (userError || !userData || !userData.user) {
+      throw new Error(`User not found: ${userError?.message || 'Unknown error'}`)
+    }
+    
+    const userEmail = userData.user.email
+    
+    if (!userEmail) {
+      throw new Error('User email not found')
     }
     
     // Set the price ID based on environment
@@ -58,6 +72,7 @@ serve(async (req) => {
       automatic_payment_methods: {
         enabled: true,
       },
+      receipt_email: userEmail, // Add the email here
       metadata: {
         user_id: user_id,
         price_id: priceId,
@@ -69,7 +84,8 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
-        clientSecret: paymentIntent.client_secret
+        clientSecret: paymentIntent.client_secret,
+        customerEmail: userEmail // Send email back to client
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

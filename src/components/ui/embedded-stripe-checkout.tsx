@@ -19,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client"
 const stripePromise = loadStripe("pk_live_51QyNBYA1u9Lm91TyZDDQqYKQJ0zLHyxnY6JW2Qeez8TAGMnyoQQJFGxgUTkEq5dhCqDFBIbmXncvv4EkQVCW7xo200PfBTQ9Wz");
 
 // CheckoutForm component that handles the payment submission
-const CheckoutForm = ({ onSuccess }: { onSuccess: () => void }) => {
+const CheckoutForm = ({ onSuccess, customerEmail }: { onSuccess: () => void, customerEmail: string }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -53,6 +53,11 @@ const CheckoutForm = ({ onSuccess }: { onSuccess: () => void }) => {
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/settings?success=true`,
+          payment_method_data: {
+            billing_details: {
+              email: customerEmail,
+            }
+          }
         },
         redirect: 'if_required'
       });
@@ -113,32 +118,6 @@ const CheckoutForm = ({ onSuccess }: { onSuccess: () => void }) => {
   );
 };
 
-// Email input component
-const EmailInput = () => {
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setError(null);
-    setEmail(e.target.value);
-  };
-
-  return (
-    <div className="mb-4">
-      <label htmlFor="email" className="block text-sm font-medium mb-1">Email Address</label>
-      <input
-        id="email"
-        type="email"
-        value={email}
-        onChange={handleChange}
-        className="w-full px-3 py-2 border rounded-md"
-        placeholder="your.email@example.com"
-      />
-      {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
-    </div>
-  );
-};
-
 interface EmbeddedStripeCheckoutProps {
   onSuccess: () => void;
   userId: string;
@@ -150,6 +129,7 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
   const [fallbackMode, setFallbackMode] = useState(false);
   const [fallbackLoading, setFallbackLoading] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [customerEmail, setCustomerEmail] = useState<string | null>(null);
 
   // Function to fetch client secret from our backend
   const fetchClientSecret = async () => {
@@ -171,6 +151,7 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
       
       console.log("Payment intent created successfully");
       setClientSecret(data.clientSecret);
+      setCustomerEmail(data.customerEmail || null);
     } catch (error) {
       console.error("Error creating checkout session:", error);
       setError(error.message || "Failed to initialize payment");
@@ -286,8 +267,7 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
     <Card className="p-6">
       <Elements stripe={stripePromise} options={{ clientSecret }}>
         <div className="space-y-4">
-          <EmailInput />
-          <CheckoutForm onSuccess={onSuccess} />
+          <CheckoutForm onSuccess={onSuccess} customerEmail={customerEmail || ''} />
         </div>
       </Elements>
     </Card>
