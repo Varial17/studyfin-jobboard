@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState } from "react"
@@ -11,60 +12,38 @@ import {
   PaymentElement,
   useStripe,
   useElements,
+  CheckoutProvider,
+  useCheckout
 } from "@stripe/react-stripe-js"
-import { StripeElementsOptions } from "@stripe/stripe-js"
-import { createPaymentIntent } from "@/services/payment"
-import { supabase } from "@/integrations/supabase/client"
 
-const stripePromise = loadStripe("pk_live_51QyNBYA1u9Lm91TyZDDQqYKQJ0zLHyxnY6JW2Qeez8TAGMnyoQQJFGxgUTkEq5dhCqDFBIbmXncvv4EkQVCW7xo200PfBTQ9Wz");
+// Initialize Stripe with the beta flag for custom checkout
+const stripePromise = loadStripe("pk_live_51QyNBYA1u9Lm91TyZDDQqYKQJ0zLHyxnY6JW2Qeez8TAGMnyoQQJFGxgUTkEq5dhCqDFBIbmXncvv4EkQVCW7xo200PfBTQ9Wz", {
+  betas: ['custom_checkout_beta_6']
+});
 
 const CheckoutForm = ({ onSuccess }: { onSuccess: () => void }) => {
-  const stripe = useStripe();
-  const elements = useElements();
+  const { confirm } = useCheckout();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
 
-  useEffect(() => {
-    if (!stripe || !elements) {
-      console.log("Stripe or Elements not initialized yet");
-    } else {
-      console.log("Stripe and Elements initialized successfully");
-    }
-  }, [stripe, elements]);
-
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-
-    if (!stripe || !elements) {
-      console.error("Stripe or Elements not initialized");
-      setErrorMessage("Payment system not fully loaded. Please try again or refresh the page.");
-      return;
-    }
-
     setProcessing(true);
     setErrorMessage(null);
 
     console.log("Processing payment...");
     
     try {
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: window.location.origin + "/settings",
-        },
-        redirect: "if_required",
-      });
-  
-      if (error) {
-        console.error("Payment error:", error);
-        setErrorMessage(error.message || "An error occurred with your payment");
-      } else if (paymentIntent && paymentIntent.status === "succeeded") {
-        console.log("Payment succeeded:", paymentIntent);
+      const result = await confirm();
+      
+      if (result.type === 'error') {
+        console.error("Payment error:", result.error);
+        setErrorMessage(result.error.message);
+      } else {
+        console.log("Payment succeeded!");
         setSucceeded(true);
         onSuccess();
-      } else {
-        console.log("Payment status:", paymentIntent?.status);
       }
     } catch (err) {
       console.error("Exception during payment confirmation:", err);
@@ -87,7 +66,7 @@ const CheckoutForm = ({ onSuccess }: { onSuccess: () => void }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement />
+      <PaymentElement options={{layout: 'accordion'}} />
       
       {errorMessage && (
         <Alert variant="destructive">
@@ -98,7 +77,7 @@ const CheckoutForm = ({ onSuccess }: { onSuccess: () => void }) => {
       
       <Button 
         type="submit" 
-        disabled={!stripe || processing} 
+        disabled={processing} 
         className="w-full"
       >
         {processing ? (
@@ -114,82 +93,87 @@ const CheckoutForm = ({ onSuccess }: { onSuccess: () => void }) => {
   );
 };
 
+const EmailInput = () => {
+  const checkout = useCheckout();
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const handleBlur = async () => {
+    try {
+      const result = await checkout.updateEmail(email);
+      if (result.error) {
+        setError(result.error.message);
+      } else {
+        setError(null);
+      }
+    } catch (err) {
+      setError("Failed to validate email. Please try again.");
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError(null);
+    setEmail(e.target.value);
+  };
+
+  return (
+    <div className="mb-4">
+      <label htmlFor="email" className="block text-sm font-medium mb-1">Email Address</label>
+      <input
+        id="email"
+        type="email"
+        value={email}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        className="w-full px-3 py-2 border rounded-md"
+        placeholder="your.email@example.com"
+      />
+      {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+    </div>
+  );
+};
+
 interface EmbeddedStripeCheckoutProps {
   onSuccess: () => void;
   userId: string;
 }
 
 export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeCheckoutProps) {
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fallbackMode, setFallbackMode] = useState(false);
   const [fallbackLoading, setFallbackLoading] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
-  const [debugState, setDebugState] = useState<string>("initializing");
-  const [lastAttemptTime, setLastAttemptTime] = useState(0);
 
-  useEffect(() => {
-    console.log(`Stripe checkout state: ${debugState}`);
-    
-    const now = Date.now();
-    const timeSinceLastAttempt = now - lastAttemptTime;
-    const minInterval = 1000 * (retryCount + 1); // Increase interval with each retry
-    
-    const getPaymentIntent = async () => {
-      if (retryCount > 0 && timeSinceLastAttempt < minInterval) {
-        const waitTime = minInterval - timeSinceLastAttempt;
-        console.log(`Waiting ${waitTime}ms before retry ${retryCount + 1}...`);
-        setTimeout(() => setRetryCount(retryCount), waitTime); // Trigger effect again after wait
-        return;
+  // Function to fetch client secret from our backend
+  const fetchClientSecret = async () => {
+    try {
+      console.log("Fetching payment intent for user:", userId);
+      setLoading(true);
+      
+      const { data, error } = await supabase.functions.invoke('create-payment-intent', {
+        body: { user_id: userId }
+      });
+      
+      if (error) {
+        throw new Error(error.message || 'Failed to create payment intent');
       }
       
-      try {
-        setLoading(true);
-        setError(null);
-        setLastAttemptTime(Date.now());
-        setDebugState(`fetching payment intent (attempt ${retryCount + 1})`);
-
-        console.log(`Fetching payment intent for user: ${userId}`);
-        const data = await createPaymentIntent(userId);
-        console.log("Payment intent created:", data);
-        
-        if (!data || !data.clientSecret) {
-          throw new Error("Failed to create payment intent - no client secret returned");
-        }
-        
-        setClientSecret(data.clientSecret);
-        setDebugState("payment intent received");
-      } catch (err) {
-        console.error("Error creating payment intent:", err);
-        
-        const isRateLimitError = err.message && (
-          err.message.includes("timeout") || 
-          err.message.includes("rate limit") || 
-          err.message.includes("429") ||
-          err.message.includes("lock_timeout")
-        );
-        
-        if (isRateLimitError && retryCount < 5) {
-          console.log(`Retrying payment intent creation (attempt ${retryCount + 2})`);
-          setRetryCount(retryCount + 1);
-          return; // This will trigger the useEffect again since retryCount changes
-        }
-        
-        setError("We're experiencing issues with our payment system. Please try the alternative checkout method below.");
-        setFallbackMode(true);
-        setDebugState("error-fallback");
-      } finally {
-        setLoading(false);
+      if (!data || !data.checkoutSessionClientSecret) {
+        throw new Error('Invalid response - no client secret returned');
       }
-    };
-
-    getPaymentIntent();
-  }, [userId, retryCount, debugState, lastAttemptTime]);
+      
+      console.log("Payment intent created successfully");
+      return data.checkoutSessionClientSecret;
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFallbackCheckout = async () => {
     setFallbackLoading(true);
-    setDebugState("fallback-checkout-initiated");
     try {
       const { data, error } = await supabase.functions.invoke('stripe-subscription', {
         body: {
@@ -208,24 +192,21 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
     } catch (err) {
       console.error('Error creating checkout session:', err);
       setError(`Checkout failed: ${err.message || 'Unknown error'}`);
-      setDebugState("fallback-checkout-failed");
     } finally {
       setFallbackLoading(false);
     }
   };
 
   const handleRetry = () => {
-    setRetryCount(0);
-    setDebugState("initializing");
-    setFallbackMode(false);
     setError(null);
+    setFallbackMode(false);
   };
 
   if (loading) {
     return (
       <Card className="p-6 flex flex-col justify-center items-center space-y-4">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <span className="text-center">Initializing payment... {retryCount > 0 ? `(Attempt ${retryCount + 1})` : ''}</span>
+        <span className="text-center">Initializing payment...</span>
       </Card>
     );
   }
@@ -279,35 +260,27 @@ export function EmbeddedStripeCheckout({ onSuccess, userId }: EmbeddedStripeChec
     );
   }
 
-  if (!clientSecret) {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>Failed to initialize payment. Please try again.</AlertDescription>
-      </Alert>
-    );
-  }
-
-  const options: StripeElementsOptions = {
-    clientSecret,
-    appearance: {
-      theme: 'stripe',
-      variables: {
-        colorPrimary: '#0284c7',
-      },
-    },
-  };
-
-  console.log("Rendering Stripe Elements with options:", { 
-    clientSecretProvided: !!clientSecret,
-    stripeLoaded: !!stripePromise
-  });
-
   return (
     <Card className="p-6">
-      <Elements stripe={stripePromise} options={options}>
-        <CheckoutForm onSuccess={onSuccess} />
-      </Elements>
+      <CheckoutProvider
+        stripe={stripePromise}
+        options={{
+          fetchClientSecret,
+          elementsOptions: {
+            appearance: {
+              theme: 'stripe',
+              variables: {
+                colorPrimary: '#0284c7',
+              },
+            },
+          }
+        }}
+      >
+        <div className="space-y-4">
+          <EmailInput />
+          <CheckoutForm onSuccess={onSuccess} />
+        </div>
+      </CheckoutProvider>
     </Card>
   );
 }

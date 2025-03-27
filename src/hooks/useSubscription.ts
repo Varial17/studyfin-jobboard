@@ -24,17 +24,17 @@ export function useSubscription() {
       console.log("Calling Stripe subscription endpoint...");
       
       const response = await supabase.functions.invoke('stripe-subscription', {
-        body: JSON.stringify({
+        body: {
           user_id: user.id,
           user_email: user.email,
           return_url: `${window.location.origin}/settings`
-        })
+        }
       });
       
       console.log("Response from Stripe:", response);
       
       if (response.error) {
-        throw new Error(response.error);
+        throw new Error(response.error.message || response.error);
       }
       
       if (response.data && response.data.error) {
@@ -74,10 +74,10 @@ export function useSubscription() {
     setError(null);
     try {
       const response = await supabase.functions.invoke('stripe-subscription/customer-portal', {
-        body: JSON.stringify({
-          user_id: user.email,
+        body: {
+          user_id: user.id,
           return_url: `${window.location.origin}/settings`
-        })
+        }
       });
 
       if (response.error) {
