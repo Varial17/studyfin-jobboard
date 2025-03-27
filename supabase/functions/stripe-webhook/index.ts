@@ -24,9 +24,10 @@ serve(async (req) => {
     const signature = req.headers.get('stripe-signature')
     
     if (!signature) {
-      console.error('Missing Stripe signature in headers. Headers received:', Object.fromEntries([...req.headers.entries()]))
+      console.error('Missing Stripe signature in headers')
+      console.log('Headers received:', Object.fromEntries([...req.headers.entries()]))
       return new Response(
-        JSON.stringify({ error: 'Missing Stripe signature', code: 401 }),
+        JSON.stringify({ error: 'Missing Stripe signature' }),
         {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
