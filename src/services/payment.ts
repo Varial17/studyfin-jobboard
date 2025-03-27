@@ -1,13 +1,13 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-export async function createPaymentIntent(userId: string) {
+export async function createPaymentIntent(userId: string, retryCount = 0) {
   try {
     if (!userId) {
       throw new Error('User ID is required');
     }
     
-    console.log(`Creating payment intent for user ${userId}`);
+    console.log(`Creating payment intent for user ${userId} (attempt ${retryCount + 1})`);
     
     // Generate a unique idempotency key for this request
     const idempotencyKey = crypto.randomUUID();
@@ -21,6 +21,25 @@ export async function createPaymentIntent(userId: string) {
     
     if (error) {
       console.error('Payment service error:', error);
+      
+      // Check if it's a lock timeout error and retry if needed
+      if (error.message && 
+          (error.message.includes('lock_timeout') || 
+           error.message.includes('rate limit') || 
+           error.message.includes('429') ||
+           error.message.includes('timeout')) && 
+          retryCount < 3) {
+        
+        const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff
+        console.log(`Retrying payment intent creation in ${delay}ms...`);
+        
+        return new Promise(resolve => {
+          setTimeout(() => {
+            resolve(createPaymentIntent(userId, retryCount + 1));
+          }, delay);
+        });
+      }
+      
       throw error;
     }
     
